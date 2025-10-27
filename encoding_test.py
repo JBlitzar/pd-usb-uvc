@@ -15,17 +15,29 @@ fb = bytearray(WIDTH * HEIGHT)
 buf = memoryview(fb)
 
 
+# Lookup table: maps a byte of 8 pixels (MSB first) to 8 grayscale bytes (255/0)
+BIT8_TO_L = [bytearray(8) for _ in range(256)]
+for b in range(256):
+    arr = BIT8_TO_L[b]
+    for bit in range(8):
+        pixel_on = (b >> (7 - bit)) & 1
+        arr[bit] = 255 if pixel_on else 0
+    BIT8_TO_L[b] = bytes(arr)
+
+
 def draw_frame(frame_bits):
     i = 0
     for y in range(HEIGHT):
         row_offset = y * BYTES_PER_ROW
-        for x in range(WIDTH):
-            byte_index = row_offset + (x // 8)
-            bit_index = 7 - (x % 8)
-            b = frame_bits[byte_index]
-            pixel_on = (b >> bit_index) & 1
-            buf[i] = 255 if pixel_on else 0
-            i += 1
+        for byte_index in range(BYTES_PER_ROW):
+            b = frame_bits[row_offset + byte_index]
+            lookup = BIT8_TO_L[b]
+
+            remaining_pixels = WIDTH - (byte_index * 8)
+            num_pixels = min(8, remaining_pixels)
+
+            buf[i : i + num_pixels] = lookup[:num_pixels]
+            i += num_pixels
 
 
 with open("pd-src/crushed_frames.bin", "rb") as f:
@@ -46,7 +58,11 @@ with open("pd-src/crushed_frames.bin", "rb") as f:
         img = Image.frombytes("L", (WIDTH, HEIGHT), bytes(buf))
         img.save("output/cur.bmp")
 
-        time.sleep(1 / FPS)
+        now = time.monotonic()
+        sleep_for = next_time - now
+        if sleep_for > 0:
+            time.sleep(sleep_for)
+        next_time += 1 / FPS
 
         frame_num += 1
         # print("Displayed frame", frame_num)

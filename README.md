@@ -1,5 +1,7 @@
 # pd-usb-uvc
 
+https://github.com/JBlitzar/pd-usb-uvc/raw/refs/heads/main/readme/demo.mp4
+
 Send arbitrary frames of video over the Pico!
 
 ## Installation

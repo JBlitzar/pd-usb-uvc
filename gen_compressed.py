@@ -12,7 +12,7 @@ FPS = 10
 
 orig_fps = 30
 big_array = []
-for filepath in tqdm(glob.glob("frames/*.jpg")):
+for filepath in tqdm(sorted(glob.glob("frames/*.jpg"))):
     if (
         int(os.path.basename(filepath).split("_")[1].split(".")[0]) % (orig_fps // FPS)
     ) != 0:
@@ -27,26 +27,29 @@ for filepath in tqdm(glob.glob("frames/*.jpg")):
 big_array = np.array(big_array)
 big_array = big_array
 
-xor_array = np.zeros_like(big_array)
-xor_array[0] = big_array[0]
-for i in range(1, big_array.shape[0]):
-    xor_array[i] = big_array[i] ^ big_array[i - 1]
+print(big_array.shape)
 
-avg_ones = np.mean(np.sum(xor_array, axis=(1, 2)))
-print("Average number of ones per xor frame:", avg_ones)
+# xor_array = np.zeros_like(big_array)
+# xor_array[0] = big_array[0]
+# for i in range(1, big_array.shape[0]):
+#     xor_array[i] = big_array[i] ^ big_array[i - 1]
 
-
-random.seed(42)
-sample_indices = random.sample(range(len(xor_array)), min(10, len(xor_array)))
-
-for idx in sample_indices:
-    frame = xor_array[idx] * 255
-    img = Image.fromarray(frame.astype(np.uint8), mode="L")
-    img.save(f"output/xor_frame_{idx:04d}.png")
-
-print(f"Saved {len(sample_indices)} random xor frames as PNG images")
+# avg_ones = np.mean(np.sum(xor_array, axis=(1, 2)))
+# print("Average number of ones per xor frame:", avg_ones)
 
 
-xor_array = np.packbits(xor_array, axis=-1)
-with open("pd-src/compressed_xor.bin", "wb") as f:
-    f.write(xor_array.tobytes())
+# random.seed(42)
+# sample_indices = random.sample(range(len(xor_array)), min(10, len(xor_array)))
+
+# for idx in sample_indices:
+#     frame = xor_array[idx] * 255
+#     img = Image.fromarray(frame.astype(np.uint8), mode="L")
+#     img.save(f"output/xor_frame_{idx:04d}.png")
+
+# print(f"Saved {len(sample_indices)} random xor frames as PNG images")
+
+
+# xor_array = np.packbits(xor_array, axis=-1)
+big_array = np.packbits(big_array, axis=-1)
+with open("pd-src/crushed_frames.bin", "wb") as f:
+    f.write(big_array.tobytes())

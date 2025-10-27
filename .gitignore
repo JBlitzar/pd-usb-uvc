@@ -1,5 +1,6 @@
 frames/*
 output/*
+cur.bmp
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

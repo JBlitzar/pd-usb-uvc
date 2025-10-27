@@ -63,6 +63,12 @@ big_array = np.packbits(big_array, axis=-1)
 with open("pd-src/crushed_frames.bin", "wb") as f:
     f.write(big_array.tobytes())
 
+left = xor_array[..., :-1].astype(np.uint16)
+right = xor_array[..., 1:].astype(np.uint16)
+paired = (left << 8) | right
+num_unique_xor_byte_pairs = np.unique(paired).size
+print("Number of unique xor byte pairs:", num_unique_xor_byte_pairs)
+
 with open("xored_frames.bin", "wb") as f:
     f.write(xor_array.tobytes())
 

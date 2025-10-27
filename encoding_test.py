@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "pillow",
+# ]
+# ///
 import struct
 import time
 from PIL import Image

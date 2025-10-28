@@ -72,5 +72,29 @@ paired = (left << 8) | right
 num_unique_xor_byte_pairs = np.unique(paired).size
 print("Number of unique xor byte pairs:", num_unique_xor_byte_pairs)
 
+flat = xor_array.ravel()
+mask = (flat == 0)
+
+if not mask.any():
+    avg_run_len = 0.0
+    num_runs = 0
+    total_null_bytes = 0
+else:
+    diffs = np.diff(mask.astype(np.int8))
+    starts = np.where(diffs == 1)[0] + 1
+    ends = np.where(diffs == -1)[0] + 1
+    if mask[0]:
+        starts = np.r_[0, starts]
+    if mask[-1]:
+        ends = np.r_[ends, mask.size]
+    runs = ends - starts
+    avg_run_len = runs.mean() if runs.size > 0 else 0.0
+    num_runs = runs.size
+    total_null_bytes = mask.sum()
+
+print("Total null bytes:", total_null_bytes)
+print("Number of null runs:", num_runs)
+print("Average null run length (bytes):", avg_run_len)
+
 with open("xored_frames.bin", "wb") as f:
     f.write(xor_array.tobytes())

@@ -35,6 +35,9 @@ for filepath in tqdm(sorted(glob.glob("frames/*.png"))):
         big_array.append(binary_array)
 big_array = np.array(big_array)
 big_array = big_array
+
+big_array = big_array[:300]
+
 print("Original size:", orig_size)
 print(big_array.shape)
 
@@ -71,4 +74,3 @@ print("Number of unique xor byte pairs:", num_unique_xor_byte_pairs)
 
 with open("xored_frames.bin", "wb") as f:
     f.write(xor_array.tobytes())
-

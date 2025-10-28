@@ -36,7 +36,7 @@ for filepath in tqdm(sorted(glob.glob("frames/*.png"))):
 big_array = np.array(big_array)
 big_array = big_array
 
-big_array = big_array[:300]
+big_array = big_array[:100]
 
 print("Original size:", orig_size)
 print(big_array.shape)

@@ -2,6 +2,7 @@ import usb_video
 import framebufferio
 import displayio
 import time
+import gc
 
 
 WIDTH = 150
@@ -18,6 +19,7 @@ fb = usb_video.USBFramebuffer()
 display = framebufferio.FramebufferDisplay(fb)
 
 buf = memoryview(fb)
+gc.collect()
 
 BIT8_TO_RGB565 = bytearray(256 * 16)
 for b in range(256):
@@ -28,6 +30,8 @@ for b in range(256):
         BIT8_TO_RGB565[base + bit * 2] = color >> 8
         BIT8_TO_RGB565[base + bit * 2 + 1] = color & 0xFF
 
+mv_lookup = memoryview(BIT8_TO_RGB565)
+
 
 def draw_frame(frame_bits):
     i = 0
@@ -36,13 +40,18 @@ def draw_frame(frame_bits):
         for byte_index in range(BYTES_PER_ROW):
             b = frame_bits[row_offset + byte_index]
             # scuffed lookup
+            # should be LITERALLY memcpy at this point
+            # plus, what, 3 ops per bit?
+            # I guess I'll unroll the loop if it's still too slow
+            # "developing on the edge!!" means terrible perf constraints
+            # and yet I'm determined to not use C if at all possible
             lookup_start = b * 16
 
             remaining_pixels = WIDTH - (byte_index * 8)
             num_pixels = min(8, remaining_pixels)
             num_bytes = num_pixels * 2
 
-            src = memoryview(BIT8_TO_RGB565)[lookup_start : lookup_start + num_bytes]
+            src = mv_lookup[lookup_start : lookup_start + num_bytes]
             buf[i : i + num_bytes] = src
             i += num_bytes
 

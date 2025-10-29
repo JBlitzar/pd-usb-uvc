@@ -37,6 +37,7 @@ def draw_frame(frame_bits):
     i = 0
     for y in range(HEIGHT):
         row_offset = y * BYTES_PER_ROW
+        fb_offset = y * 160 * 2  # full framebuffer row (160 pixels, RGB565 = 2 bytes)
         for byte_index in range(BYTES_PER_ROW):
             b = frame_bits[row_offset + byte_index]
             # scuffed lookup
@@ -52,8 +53,9 @@ def draw_frame(frame_bits):
             num_bytes = num_pixels * 2
 
             src = mv_lookup[lookup_start : lookup_start + num_bytes]
-            buf[i : i + num_bytes] = src
-            i += num_bytes
+            buf[
+                fb_offset + byte_index * 16 : fb_offset + byte_index * 16 + num_bytes
+            ] = src
 
 
 with open("crushed_frames.bin", "rb") as f:

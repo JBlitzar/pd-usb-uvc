@@ -1,0 +1,696 @@
+# I DID NOT WRITE THIS CODE!
+#
+# https://github.com/PyDevices/pydisplay/blob/ef14624e6ff605a87784b5cd3ef641d7301e6ed4/board_configs/fbdisplay/cp_usb_video/board_config.py
+# https://github.com/PyDevices/pydisplay/blob/ef14624e6ff605a87784b5cd3ef641d7301e6ed4/src/lib/displaysys/fbdisplay.py
+# https://github.com/PyDevices/pydisplay/blob/ef14624e6ff605a87784b5cd3ef641d7301e6ed4/src/lib/displaysys/__init__.py
+
+# Header:
+# SPDX-FileCopyrightText: 2024 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
+"""
+`displaysys`
+====================================================
+
+A collection of classes and functions for working with displays and input devices
+in *Python.  The goal is to provide a common API for working with displays and
+input devices across different platforms including MicroPython, CircuitPython and
+CPython.  It works on microcontrollers, desktops, web browsers and Jupyter notebooks.
+"""
+
+import gc
+
+try:
+    from byteswap import byteswap
+except ImportError:
+
+    def byteswap(buf):
+        """
+        Swap the bytes of a 16-bit buffer in place with no dependencies.
+        """
+        buf[::2], buf[1::2] = buf[1::2], buf[::2]
+
+
+gc.collect()
+
+
+def alloc_buffer(size):
+    """
+    Create a new buffer of the specified size.  In the future, this function may be
+    modified to use port-specific memory allocation such as ESP32's heap_caps_malloc.
+
+    Args:
+        size (int): The size of the buffer to create.
+
+    Returns:
+        (memoryview): The new buffer.
+    """
+    return memoryview(bytearray(size))
+
+
+def color888(r, g, b):
+    """
+    Convert RGB values to a 24-bit color value.
+
+    Args:
+        r (int): The red value.
+        g (int): The green value.
+        b (int): The blue value.
+
+    Returns:
+        (int): The 24-bit color value.
+    """
+    return (r << 16) | (g << 8) | b
+
+
+def color565(r, g=None, b=None):
+    """
+    Convert RGB values to a 16-bit color value.
+
+    Args:
+        r (int, tuple or list): The red value or a tuple or list of RGB values.
+        g (int): The green value.
+        b (int): The blue value.
+
+    Returns:
+        (int): The 16-bit color value
+    """
+    if isinstance(r, (tuple, list)):
+        r, g, b = r[:3]
+    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+
+
+def color565_swapped(r, g=0, b=0):
+    # Convert r, g, b in range 0-255 to a 16 bit color value RGB565
+    # ggbbbbbb rrrrrggg
+    if isinstance(r, (tuple, list)):
+        r, g, b = r[:3]
+    color = color565(r, g, b)
+    return (color & 0xFF) << 8 | (color & 0xFF00) >> 8
+
+
+def color332(r, g, b):
+    # Convert r, g, b in range 0-255 to an 8 bit color value RGB332
+    # rrrgggbb
+    return (r & 0xE0) | ((g >> 3) & 0x1C) | (b >> 6)
+
+
+def color_rgb(color):
+    """
+    color can be an 16-bit integer or a tuple, list or bytearray of length 2 or 3.
+    """
+    if isinstance(color, int):
+        # convert 16-bit int color to 2 bytes
+        color = (color & 0xFF, color >> 8)
+    if len(color) == 2:
+        r = color[1] & 0xF8 | (color[1] >> 5) & 0x7  # 5 bit to 8 bit red
+        g = color[1] << 5 & 0xE0 | (color[0] >> 3) & 0x1F  # 6 bit to 8 bit green
+        b = color[0] << 3 & 0xF8 | (color[0] >> 2) & 0x7  # 5 bit to 8 bit blue
+    else:
+        r, g, b = color
+    return (r, g, b)
+
+
+class DisplayDriver:
+    def __init__(self, auto_refresh=False):
+        print(f"Initializing {self.__class__.__name__}...")
+        gc.collect()
+
+        self.byteswap = byteswap
+        self._vssa = False  # False means no vertical scroll
+        self._auto_byteswap = self.requires_byteswap
+        self._touch_device = None
+        if auto_refresh:
+            period = 33 if isinstance(auto_refresh, bool) else auto_refresh
+            try:
+                from multimer import get_timer
+
+                self._timer = get_timer(self.show, period=period)
+            except ImportError:
+                raise ImportError("multimer is required for auto_refresh")
+        else:
+            self._timer = None
+        self.init()
+        gc.collect()
+        print(f"{self.__class__.__name__}: initialized.")
+        print(
+            f"{self.__class__.__name__}: requires_byteswap = {self.requires_byteswap}"
+        )
+
+    def __del__(self):
+        self.deinit()
+
+    ############### Universal API Methods, not usually overridden ################
+
+    @property
+    def width(self) -> int:
+        """The width of the display in pixels."""
+        if ((self._rotation // 90) & 0x1) == 0x1:  # if rotation index is odd
+            return self._height
+        return self._width
+
+    @property
+    def height(self) -> int:
+        """The height of the display in pixels."""
+        if ((self._rotation // 90) & 0x1) == 0x1:  # if rotation index is odd
+            return self._width
+        return self._height
+
+    @property
+    def rotation(self) -> int:
+        """
+        The rotation of the display.
+        """
+        return self._rotation
+
+    @rotation.setter
+    def rotation(self, value) -> None:
+        """
+        Sets the rotation of the display.
+
+        Args:
+            value (int): The rotation of the display in degrees.
+        """
+
+        if value % 90 != 0:
+            value = value * 90
+
+        if value == self._rotation:
+            return
+
+        print(f"{self.__class__.__name__}.rotation():  Setting rotation to {value}")
+        self._rotation_helper(value)
+        print("done setting rotation")
+
+        self._rotation = value
+
+        if self._touch_device is not None:
+            self._touch_device.rotation = value
+
+        self.init()
+
+    @property
+    def touch_device(self) -> object:
+        """
+        The touch device.
+        """
+        return self._touch_device
+
+    @touch_device.setter
+    def touch_device(self, value) -> None:
+        """
+        Sets the touch device.
+
+        Args:
+            value (object): The touch device.
+        """
+        if hasattr(value, "rotation") or value is None:
+            self._touch_device = value
+        else:
+            raise ValueError("touch_device must have a rotation attribute")
+        self._touch_device.rotation = self.rotation
+
+    def fill(self, color):
+        """
+        Fill the display with a color.
+
+        Args:
+            color (int): The color to fill the display with.
+        """
+        return self.fill_rect(0, 0, self.width, self.height, color)
+
+    def scroll(self, dx, dy) -> None:
+        """
+        Scroll the display.
+
+        Args:
+            dx (int): The number of pixels to scroll horizontally.
+            dy (int): The number of pixels to scroll vertically.
+        """
+        if dy != 0:
+            if self._vssa is not None:
+                self.vscsad(self._vssa + dy)
+            else:
+                self.vscsad(dy)
+        if dx != 0:
+            raise NotImplementedError("Horizontal scrolling not supported")
+
+    def disable_auto_byteswap(self, value: bool) -> bool:
+        """
+        Disable byte swapping in the display driver.
+
+        If self.requires_byteswap and the guest application is capable of byte swapping color data
+        check to see if byte swapping can be disabled.  If so, disable it.
+
+        Usage:
+            ```
+            # If byte swapping is required and the display driver is capable of having byte swapping disabled,
+            # disable it and set a flag so we can swap the color bytes as they are created.
+            if display_drv.requires_byteswap:
+                needs_swap = display_drv.disable_auto_byteswap(True)
+            else:
+                needs_swap = False
+            ```
+
+        Args:
+            value (bool): Whether to disable byte swapping.
+
+        Returns:
+            (bool): Whether byte swapping was disabled successfully.
+
+        """
+        if self._requires_byteswap:
+            self._auto_byteswap = not value
+        else:
+            self._auto_byteswap = False
+        print(f"{self.__class__.__name__}:  auto byte swapping = {self._auto_byteswap}")
+        return not self._auto_byteswap
+
+    @property
+    def requires_byteswap(self) -> bool:
+        """
+        Whether the display requires byte swapping.
+        """
+        return self._requires_byteswap
+
+    def blit_transparent(
+        self, buf: memoryview, x: int, y: int, w: int, h: int, key: int
+    ):
+        """
+        Blit a buffer with transparency.
+
+        Args:
+            buf (memoryview): The buffer to blit.
+            x (int): The x coordinate to blit to.
+            y (int): The y coordinate to blit to.
+            w (int): The width to blit.
+            h (int): The height to blit.
+            key (int): The color key to use for transparency.
+
+        Returns:
+            (tuple): The x, y, w, h coordinates of the blitted area.
+        """
+        BPP = self.color_depth // 8
+        key_bytes = key.to_bytes(BPP, "little")
+        stride = w * BPP
+        for j in range(h):
+            rowstart = j * stride
+            colstart = 0
+            # iterate over each pixel looking for the first non-key pixel
+            while colstart < stride:
+                startoffset = rowstart + colstart
+                if buf[startoffset : startoffset + BPP] != key_bytes:
+                    # found a non-key pixel
+                    # then iterate over each pixel looking for the next key pixel
+                    colend = colstart
+                    while colend < stride:
+                        endoffset = rowstart + colend
+                        if buf[endoffset : endoffset + BPP] == key_bytes:
+                            break
+                        colend += BPP
+                    # blit the non-key pixels
+                    self.blit_rect(
+                        buf[rowstart + colstart : rowstart + colend],
+                        x + colstart // BPP,
+                        y + j,
+                        (colend - colstart) // BPP,
+                        1,
+                    )
+                    colstart = colend
+                else:
+                    colstart += BPP
+        return (x, y, w, h)
+
+    @property
+    def vscroll(self) -> int:
+        """
+        The vertical scroll position relative to the top fixed area.
+
+        Returns:
+            (int): The vertical scroll position.
+        """
+        return self.vscsad() - self._tfa
+
+    @vscroll.setter
+    def vscroll(self, y) -> None:
+        """
+        Set the vertical scroll position relative to the top fixed area.
+
+        Args:
+            y (int): The vertical scroll position.
+        """
+        self.vscsad((y % self._vsa) + self._tfa)
+
+    def set_vscroll(self, tfa=0, bfa=0) -> None:
+        """
+        Set the vertical scroll definition and move the vertical scroll to the top.
+
+        Args:
+            tfa (int): The top fixed area.
+            bfa (int): The bottom fixed area.
+        """
+        self.vscrdef(tfa, self.height - tfa - bfa, bfa)
+        self.vscroll = 0
+
+    @property
+    def tfa(self) -> int:
+        """
+        The top fixed area set by set_vscroll or vscrdef.
+
+        Returns:
+            (int): The top fixed area.
+        """
+        return self._tfa
+
+    @property
+    def vsa(self) -> int:
+        """
+        The vertical scroll area set by set_vscroll or vscrdef.
+
+        Returns:
+            (int): The vertical scroll area.
+        """
+        return self._vsa
+
+    @property
+    def bfa(self) -> int:
+        """
+        The bottom fixed area set by set_vscroll or vscrdef.
+
+        Returns:
+            (int): The bottom fixed area.
+        """
+        return self._bfa
+
+    def translate_point(self, point) -> tuple:
+        """
+        Translate a point from real coordinates to scrolled coordinates.
+
+        Useful for touch events.
+
+        Args:
+            point (tuple): The x and y coordinates to translate.
+
+        Returns:
+            (tuple): The translated x and y coordinates.
+        """
+        x, y = point
+        if self.vscsad() and self.tfa < y < self.height - self.bfa:
+            y = y + self.vscsad() - self.tfa
+            if y >= (self.vsa + self.tfa):
+                y %= self.vsa
+        return x, y
+
+    def scroll_by(self, value):
+        self.vscroll += value
+
+    def scroll_to(self, value):
+        self.vscroll = value
+
+    @property
+    def tfa_area(self):
+        """
+        The top fixed area as an Area object.
+
+        Returns:
+            (tuple): The top fixed area.
+        """
+        return (0, 0, self.width, self.tfa)
+
+    @property
+    def vsa_area(self):
+        """
+        The vertical scroll area as an Area object.
+
+        Returns:
+            (tuple): The vertical scroll area.
+        """
+        return (0, self.tfa, self.width, self.vsa)
+
+    @property
+    def bfa_area(self):
+        """
+        The bottom fixed area as an Area object.
+
+        Returns:
+            (tuple): The bottom fixed area.
+        """
+        return (0, self.tfa + self.vsa, self.width, self.bfa)
+
+    ############### Common API Methods, sometimes overridden ################
+
+    def vscrdef(self, tfa: int, vsa: int, bfa: int) -> None:
+        """
+        Set the vertical scroll definition.  Should be overridden by the
+        subclass and called as super().vscrdef(tfa, vsa, bfa).
+
+        Args:
+            tfa (int): The top fixed area.
+            vsa (int): The vertical scroll area.
+            bfa (int): The bottom fixed area.
+        """
+        if tfa + vsa + bfa != self.height:
+            raise ValueError(
+                "Sum of top, scroll and bottom areas must equal screen height"
+            )
+        self._tfa = tfa
+        self._vsa = vsa
+        self._bfa = bfa
+
+    def vscsad(self, vssa: int | None = None) -> int:
+        """
+        Set or get the vertical scroll start address.  Should be overridden by the
+        subclass and called as super().vscsad(y).
+
+        Args:
+            vssa (int): The vertical scroll start address.
+
+        Returns:
+            (int): The vertical scroll start address.
+        """
+        if vssa is not None:
+            while vssa < 0:
+                vssa += self._height
+            if vssa >= self._height:
+                vssa %= self._height
+            self._vssa = vssa
+        return vssa
+
+    def _rotation_helper(self, value):
+        """
+        Helper function to set the rotation of the display.
+
+        Args:
+            value (int): The rotation of the display in degrees.
+        """
+        # override this method in subclasses to handle rotation
+
+    ############### Empty API Methods, must be overridden if applicable ################
+
+    @property
+    def power(self) -> bool:
+        """The power state of the display."""
+        return -1
+
+    @power.setter
+    def power(self, value: bool) -> None:
+        """
+        Set the power state of the display.  Should be overridden by the subclass.
+
+        Args:
+            value (bool): True to power on, False to power off.
+        """
+        return
+
+    @property
+    def brightness(self) -> float:
+        """The brightness of the display."""
+        return -1
+
+    @brightness.setter
+    def brightness(self, value: float) -> None:
+        """
+        Set the brightness of the display.  Should be overridden by the subclass.
+
+        Args:
+            value (int, float): The brightness value from 0 to 1.
+        """
+        return
+
+    def invert_colors(self, value: bool) -> None:
+        """
+        Invert the colors of the display.  Should be overridden by the subclass.
+
+        Args:
+            value (bool): True to invert the colors, False to restore the colors.
+        """
+        return
+
+    def reset(self) -> None:
+        """
+        Perform a reset of the display.  Should be overridden by the subclass.
+        """
+        return
+
+    def hard_reset(self) -> None:
+        """
+        Perform a hardware reset of the display.  Should be overridden by the subclass.
+        """
+        return
+
+    def soft_reset(self) -> None:
+        """
+        Perform a software reset of the display.  Should be overridden by the subclass.
+        """
+        return
+
+    def sleep_mode(self, value: bool) -> None:
+        """
+        Set the sleep mode of the display.  Should be overridden by the subclass.
+
+        Args:
+            value (bool): True to enter sleep mode, False to exit sleep mode.
+        """
+        return
+
+    def deinit(self) -> None:
+        """
+        Deinitialize the display.
+        """
+        self.__del__()
+
+    def show(self, *args, **kwargs) -> None:
+        """
+        Show the display.  Base class method does nothing.  May be overridden by subclasses.
+        """
+        return
+
+
+class FBDisplay(DisplayDriver):
+    """
+    A class to interface with CircuitPython FrameBuffer objects.
+
+    Args:
+        buffer (FrameBuffer): The CircuitPython FrameBuffer object.
+        width (int, optional): The width of the display. Defaults to None.
+        height (int, optional): The height of the display. Defaults to None.
+        reverse_bytes_in_word (bool, optional): Whether to reverse the bytes in a word. Defaults to False.
+
+    Attributes:
+        color_depth (int): The color depth of the display
+    """
+
+    def __init__(self, buffer, width=None, height=None, reverse_bytes_in_word=False):
+        self._raw_buffer = buffer
+        self._buffer = memoryview(buffer)
+        self._width = width if width else buffer.width
+        self._height = height if height else buffer.height
+        self._requires_byteswap = reverse_bytes_in_word
+        self._rotation = 0
+        self.color_depth = 16
+
+        super().__init__()
+
+    ############### Required API Methods ################
+
+    def init(self) -> None:
+        """
+        Initializes the display instance.  Called by __init__ and rotation setter.
+        """
+
+    def fill_rect(self, x, y, w, h, c):
+        """
+        Fills a rectangle with the given color.
+
+        Args:
+            x (int): The x-coordinate of the top-left corner of the rectangle.
+            y (int): The y-coordinate of the top-left corner of the rectangle.
+            w (int): The width of the rectangle.
+            h (int): The height of the rectangle.
+            c (int): The color to fill the rectangle with.
+
+        Returns:
+            (tuple): A tuple containing the x, y, w, h values
+        """
+        BPP = self.color_depth // 8
+        if self._auto_byteswap:
+            color_bytes = (c & 0xFFFF).to_bytes(2, "big")
+        else:
+            color_bytes = (c & 0xFFFF).to_bytes(2, "little")
+
+        for _y in range(y, y + h):
+            begin = (_y * self.width + x) * BPP
+            end = begin + w * BPP
+            self._buffer[begin:end] = color_bytes * w
+        return (x, y, w, h)
+
+    def blit_rect(self, buf, x, y, w, h):
+        """
+        Blits a buffer to the display at the given coordinates.
+
+        Args:
+            buf (memoryview): The buffer to blit.
+            x (int): The x-coordinate of the buffer.
+            y (int): The y-coordinate of the buffer.
+            w (int): The width of the buffer.
+            h (int): The height of the buffer.
+
+        Returns:
+            (tuple): A tuple containing the x, y, w, h values.
+        """
+        if self._auto_byteswap:
+            self.byteswap(buf)
+
+        BPP = self.color_depth // 8
+        if x < 0 or y < 0 or x + w > self.width or y + h > self.height:
+            raise ValueError("The provided x, y, w, h values are out of range")
+        if len(buf) != w * h * BPP:
+            raise ValueError("The source buffer is not the correct size")
+        for row in range(h):
+            source_begin = row * w * BPP
+            source_end = source_begin + w * BPP
+            dest_begin = ((y + row) * self.width + x) * BPP
+            dest_end = dest_begin + w * BPP
+            self._buffer[dest_begin:dest_end] = buf[source_begin:source_end]
+        return (x, y, w, h)
+
+    def pixel(self, x, y, c):
+        """
+        Sets the color of the pixel at the given coordinates.
+
+        Args:
+            x (int): The x-coordinate of the pixel.
+            y (int): The y-coordinate of the pixel.
+            c (int): The color of the pixel.
+
+        Returns:
+            (tuple): A tuple containing the x, y values.
+        """
+        return self.fill_rect(x, y, 1, 1, c)
+
+    ############### Optional API Methods ################
+
+    def show(self) -> None:
+        """
+        Refreshes the display.
+        """
+        self._raw_buffer.refresh()
+
+
+from usb_video import USBFramebuffer
+from framebufferio import FramebufferDisplay
+from displayio import release_displays
+
+from displaysys.fbdisplay import FBDisplay
+
+
+release_displays()
+display = FramebufferDisplay(USBFramebuffer(), auto_refresh=True)
+fb = display.framebuffer
+display.root_group = None
+
+display_drv = FBDisplay(fb, reverse_bytes_in_word=True)
+magenta = color565(255, 0, 255)
+display_drv.fill(magenta)
+display_drv.show()

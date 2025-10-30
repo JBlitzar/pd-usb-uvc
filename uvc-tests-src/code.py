@@ -22,7 +22,7 @@ CPython.  It works on microcontrollers, desktops, web browsers and Jupyter noteb
 import gc
 
 try:
-    from byteswap import byteswap
+    from byteswap import byteswap  # type: ignore
 except ImportError:
 
     def byteswap(buf):
@@ -678,9 +678,9 @@ class FBDisplay(DisplayDriver):
         self._raw_buffer.refresh()
 
 
-from usb_video import USBFramebuffer
-from framebufferio import FramebufferDisplay
-from displayio import release_displays
+from usb_video import USBFramebuffer  # type: ignore  # noqa: E402
+from framebufferio import FramebufferDisplay  # type: ignore  # noqa: E402
+from displayio import release_displays  # type: ignore # noqa: E402
 
 
 release_displays()

@@ -17,7 +17,7 @@ displayio.release_displays()
 fb = usb_video.USBFramebuffer()
 display = framebufferio.FramebufferDisplay(fb)
 
-buf = memoryview(fb)
+buf = memoryview(fb).cast("B")
 gc.collect()
 
 # Precompute RGB565-swapped (LSB first) lookup for 8 pixels per input byte
@@ -55,7 +55,7 @@ def render_full_from_bits(frame_bits: bytes) -> None:
 def flip_bit_inplace(bitbuf: bytearray, idx: int) -> None:
     byte_i = idx // 8
     bit_in_byte = 7 - (idx % 8)
-    bitbuf[byte_i] ^= (1 << bit_in_byte)
+    bitbuf[byte_i] ^= 1 << bit_in_byte
 
 
 with open("crushed_frames.bin", "rb") as f:
@@ -91,7 +91,7 @@ with open("crushed_frames.bin", "rb") as f:
             display.refresh()
             continue
 
-        payload_len = (len_bytes[0] | (len_bytes[1] << 8))
+        payload_len = len_bytes[0] | (len_bytes[1] << 8)
         if payload_len == 0:
             # identical frame; refresh to present
             display.refresh()

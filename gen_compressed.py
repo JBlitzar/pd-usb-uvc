@@ -12,89 +12,62 @@ import os
 import glob
 import numpy as np
 from tqdm import tqdm
-import random
 
-WIDTH = 150
-HEIGHT = 150 * 3 // 4
+WIDTH = 160
+HEIGHT = 120
 FPS = 10
 
-orig_fps = 30
-big_array = []
+ORIG_FPS = 30
+frames_bin = []
 for filepath in tqdm(sorted(glob.glob("frames/*.png"))):
-    if (
-        int(os.path.basename(filepath).split("_")[1].split(".")[0]) % (orig_fps // FPS)
-    ) != 0:
+    frame_idx = int(os.path.basename(filepath).split("_")[1].split(".")[0])
+    if (frame_idx % (ORIG_FPS // FPS)) != 0:
         continue
     with Image.open(filepath) as img:
         orig_size = img.size
         img = img.resize((WIDTH, HEIGHT))
-
         img = img.convert("L")
         img_array = np.array(img)
         binary_array = (img_array > 128).astype(np.uint8)
-        big_array.append(binary_array)
-big_array = np.array(big_array)
-big_array = big_array
+        frames_bin.append(binary_array)
 
-big_array = big_array[:100]
+frames = np.array(frames_bin, dtype=np.uint8)
+if frames.shape[0] == 0:
+    raise SystemExit("No frames selected; check frames directory and fps downsampling")
 
 print("Original size:", orig_size)
-print(big_array.shape)
+print("Selected frames:", frames.shape)
 
-xor_array = np.zeros_like(big_array)
-xor_array[0] = big_array[0]
-for i in range(1, big_array.shape[0]):
-    xor_array[i] = big_array[i] ^ big_array[i - 1]
-
-avg_ones = np.mean(np.sum(xor_array, axis=(1, 2)))
-print("Average number of ones per xor frame:", avg_ones)
+H, W = HEIGHT, WIDTH
+BYTES_PER_ROW = (W + 7) // 8
+BYTES_PER_FRAME = BYTES_PER_ROW * H
 
 
-# random.seed(42)
-# sample_indices = random.sample(range(len(xor_array)), min(10, len(xor_array)))
-
-# for idx in sample_indices:
-#     frame = xor_array[idx] * 255
-#     img = Image.fromarray(frame.astype(np.uint8), mode="L")
-#     img.save(f"output/xor_frame_{idx:04d}.png")
-
-# print(f"Saved {len(sample_indices)} random xor frames as PNG images")
+def pack_bits(frame_bool: np.ndarray) -> bytes:
+    return np.packbits(frame_bool, axis=-1).tobytes()
 
 
-xor_array = np.packbits(xor_array, axis=-1)
-big_array = np.packbits(big_array, axis=-1)
+def encode_delta(prev: np.ndarray, cur: np.ndarray) -> bytes:
+    xor = prev ^ cur
+    ys, xs = np.nonzero(xor)
+    if ys.size == 0:
+        return (0).to_bytes(2, "little")
+    idxs = (ys.astype(np.int32) * W + xs.astype(np.int32)).astype(np.uint16)
+    payload = bytearray(2 * idxs.size)
+    j = 0
+    for v in idxs.tolist():
+        payload[j] = v & 0xFF
+        payload[j + 1] = (v >> 8) & 0xFF
+        j += 2
+    length_le = (len(payload)).to_bytes(2, "little")
+    return length_le + payload
+
+
 with open("pd-src/crushed_frames.bin", "wb") as f:
-    f.write(big_array.tobytes())
+    # keyframe: bitpacked, MSB-first per np.packbits default
+    f.write(pack_bits(frames[0]))
+    # subsequent frames: 2-byte little-endian length followed by 2-byte LE indices
+    for i in range(1, frames.shape[0]):
+        f.write(encode_delta(frames[i - 1], frames[i]))
 
-left = xor_array[..., :-1].astype(np.uint16)
-right = xor_array[..., 1:].astype(np.uint16)
-paired = (left << 8) | right
-num_unique_xor_byte_pairs = np.unique(paired).size
-print("Number of unique xor byte pairs:", num_unique_xor_byte_pairs)
-
-flat = xor_array.ravel()
-mask = (flat == 0)
-
-if not mask.any():
-    avg_run_len = 0.0
-    num_runs = 0
-    total_null_bytes = 0
-else:
-    diffs = np.diff(mask.astype(np.int8))
-    starts = np.where(diffs == 1)[0] + 1
-    ends = np.where(diffs == -1)[0] + 1
-    if mask[0]:
-        starts = np.r_[0, starts]
-    if mask[-1]:
-        ends = np.r_[ends, mask.size]
-    runs = ends - starts
-    avg_run_len = runs.mean() if runs.size > 0 else 0.0
-    num_runs = runs.size
-    total_null_bytes = mask.sum()
-
-print("Total null bytes:", total_null_bytes)
-print("Number of null runs:", num_runs)
-print("Average null run length (bytes):", avg_run_len)
-
-with open("xored_frames.bin", "wb") as f:
-    f.write(xor_array.tobytes())
+print("Wrote compressed stream to pd-src/crushed_frames.bin")

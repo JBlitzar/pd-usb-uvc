@@ -10,9 +10,8 @@ from PIL import Image
 import os
 
 
-WIDTH = 150
-HEIGHT = 112
-FRAMES = 100
+WIDTH = 160
+HEIGHT = 120
 FPS = 10
 BYTES_PER_ROW = (WIDTH + 7) // 8
 BYTES_PER_FRAME = BYTES_PER_ROW * HEIGHT
@@ -31,36 +30,37 @@ for b in range(256):
     BIT8_TO_L[b] = bytes(arr)
 
 
-def draw_frame(frame_bits):
+def draw_frame(frame_bits: bytes) -> None:
     i = 0
     for y in range(HEIGHT):
         row_offset = y * BYTES_PER_ROW
         for byte_index in range(BYTES_PER_ROW):
             b = frame_bits[row_offset + byte_index]
             lookup = BIT8_TO_L[b]
-
             remaining_pixels = WIDTH - (byte_index * 8)
-            num_pixels = min(8, remaining_pixels)
-
+            num_pixels = 8 if remaining_pixels >= 8 else remaining_pixels
             buf[i : i + num_pixels] = lookup[:num_pixels]
             i += num_pixels
 
 
+def flip_bit_inplace(bitbuf: bytearray, idx: int) -> None:
+    byte_i = idx // 8
+    bit_in_byte = 7 - (idx % 8)
+    bitbuf[byte_i] ^= 1 << bit_in_byte
+
+
 with open("pd-src/crushed_frames.bin", "rb") as f:
-    frame_num = 0
+    key = f.read(BYTES_PER_FRAME)
+    if not key or len(key) < BYTES_PER_FRAME:
+        raise SystemExit("Invalid stream: missing keyframe")
+
+    cur_bits = bytearray(key)
     next_time = time.monotonic()
+
     while True:
-        frame_bits = f.read(BYTES_PER_FRAME)
-
-        if not frame_bits:
-            f.seek(0)
-            frame_bits = f.read(BYTES_PER_FRAME)
-            frame_num = 0
-
-        draw_frame(frame_bits)
+        draw_frame(cur_bits)
 
         os.makedirs("output", exist_ok=True)
-
         img = Image.frombytes("L", (WIDTH, HEIGHT), bytes(buf))
         img.save("output/cur.bmp")
 
@@ -70,5 +70,30 @@ with open("pd-src/crushed_frames.bin", "rb") as f:
             time.sleep(sleep_for)
         next_time += 1 / FPS
 
-        frame_num += 1
-        # print("Displayed frame", frame_num)
+        len_bytes = f.read(2)
+        if not len_bytes or len(len_bytes) < 2:
+            f.seek(0)
+            key = f.read(BYTES_PER_FRAME)
+            if not key or len(key) < BYTES_PER_FRAME:
+                raise SystemExit("Invalid stream after loop: missing keyframe")
+            cur_bits[:] = key
+            continue
+
+        payload_len = len_bytes[0] | (len_bytes[1] << 8)
+        if payload_len == 0:
+            continue
+
+        payload = f.read(payload_len)
+        if not payload or len(payload) < payload_len:
+            f.seek(0)
+            key = f.read(BYTES_PER_FRAME)
+            if not key or len(key) < BYTES_PER_FRAME:
+                raise SystemExit("Invalid stream after truncation: missing keyframe")
+            cur_bits[:] = key
+            continue
+
+        i = 0
+        while i + 1 < payload_len:
+            idx = payload[i] | (payload[i + 1] << 8)
+            flip_bit_inplace(cur_bits, idx)
+            i += 2

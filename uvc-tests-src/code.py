@@ -682,8 +682,6 @@ from usb_video import USBFramebuffer
 from framebufferio import FramebufferDisplay
 from displayio import release_displays
 
-from displaysys.fbdisplay import FBDisplay
-
 
 release_displays()
 display = FramebufferDisplay(USBFramebuffer(), auto_refresh=True)

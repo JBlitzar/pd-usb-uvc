@@ -3,6 +3,7 @@ import framebufferio
 import displayio
 import time
 import gc
+from array import array
 
 
 WIDTH = 160
@@ -17,39 +18,36 @@ displayio.release_displays()
 fb = usb_video.USBFramebuffer()
 display = framebufferio.FramebufferDisplay(fb)
 
-buf = memoryview(fb).cast("B")
+# Framebuffer is 16-bit RGB565 elements
+buf16 = memoryview(fb)
 gc.collect()
 
-# Precompute RGB565-swapped (LSB first) lookup for 8 pixels per input byte
-BIT8_TO_RGB565_SWAPPED = bytearray(256 * 16)
+# Precompute 16-bit RGB565 lookup for 8 pixels per input byte
+BIT8_TO_RGB565 = array("H", [0] * (256 * 8))
 for b in range(256):
-    base = b * 16
+    base = b * 8
     for bit in range(8):
         pixel_on = (b >> (7 - bit)) & 1
-        color = 0xFFFF if pixel_on else 0x0000
-        # swapped: low byte first, then high byte
-        BIT8_TO_RGB565_SWAPPED[base + bit * 2] = color & 0xFF
-        BIT8_TO_RGB565_SWAPPED[base + bit * 2 + 1] = (color >> 8) & 0xFF
+        BIT8_TO_RGB565[base + bit] = 0xFFFF if pixel_on else 0x0000
 
-mv_lookup = memoryview(BIT8_TO_RGB565_SWAPPED)
+mv_lookup = BIT8_TO_RGB565
 
 
 def render_full_from_bits(frame_bits: bytes) -> None:
     for y in range(HEIGHT):
         row_offset = y * BYTES_PER_ROW
-        base_fb = y * WIDTH * 2
+        base_fb = y * WIDTH
         for byte_index in range(BYTES_PER_ROW):
             b = frame_bits[row_offset + byte_index]
-            lookup_base = b * 16
+            lookup_base = b * 8
 
             remaining_pixels = WIDTH - (byte_index * 8)
             num_pixels = 8 if remaining_pixels >= 8 else remaining_pixels
 
             for k in range(num_pixels):
-                dst_pos = base_fb + (byte_index * 8 + k) * 2
-                src_pos = lookup_base + k * 2
-                buf[dst_pos] = mv_lookup[src_pos]
-                buf[dst_pos + 1] = mv_lookup[src_pos + 1]
+                dst_pos = base_fb + (byte_index * 8 + k)
+                src_pos = lookup_base + k
+                buf16[dst_pos] = mv_lookup[src_pos]
 
 
 def flip_bit_inplace(bitbuf: bytearray, idx: int) -> None:
@@ -113,18 +111,17 @@ with open("crushed_frames.bin", "rb") as f:
         i = 0
         while i + 1 < payload_len:
             idx = payload[i] | (payload[i + 1] << 8)
+            # Guard against malformed indices
+            if idx >= WIDTH * HEIGHT:
+                i += 2
+                continue
+
             flip_bit_inplace(cur_bits, idx)
 
             byte_i = idx // 8
             bit_in_byte = 7 - (idx % 8)
             on = (cur_bits[byte_i] >> bit_in_byte) & 1
-            dst = idx * 2
-            if on:
-                buf[dst] = 0xFF
-                buf[dst + 1] = 0xFF
-            else:
-                buf[dst] = 0x00
-                buf[dst + 1] = 0x00
+            buf16[idx] = 0xFFFF if on else 0x0000
             i += 2
 
         # present frame after applying deltas

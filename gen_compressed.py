@@ -50,13 +50,9 @@ def pack_bits(frame_bool: np.ndarray) -> bytes:
     return np.packbits(frame_bool, axis=-1).tobytes()
 
 
-delta_sizes = []
-
-
 def encode_delta(prev: np.ndarray, cur: np.ndarray) -> bytes:
     xor = prev ^ cur
     ys, xs = np.nonzero(xor)
-    delta_sizes.append(ys.size)
     if ys.size == 0:
         return (0).to_bytes(2, "little")
     idxs = (ys.astype(np.int32) * W + xs.astype(np.int32)).astype(np.uint16)
@@ -78,21 +74,3 @@ with open("pd-src/crushed_frames.bin", "wb") as f:
         f.write(encode_delta(frames[i - 1], frames[i]))
 
 print("Wrote compressed stream to pd-src/crushed_frames.bin")
-print("stats:")
-total_deltas = len(delta_sizes)
-print(" total frames (incl keyframe):", total_deltas + 1)
-total_changed = sum(delta_sizes)
-print(" total changed pixels:", total_changed)
-avg_changed = total_changed / total_deltas
-print(" avg changed pixels per frame:", avg_changed)
-std_changed = np.std(delta_sizes)
-q1_changed = np.percentile(delta_sizes, 25)
-q3_changed = np.percentile(delta_sizes, 75)
-min_changed = np.min(delta_sizes)
-max_changed = np.max(delta_sizes)
-
-print(" std changed pixels per frame:", std_changed)
-print(" q1 changed pixels per frame:", q1_changed)
-print(" q3 changed pixels per frame:", q3_changed)
-print(" min changed pixels per frame:", min_changed)
-print(" max changed pixels per frame:", max_changed)

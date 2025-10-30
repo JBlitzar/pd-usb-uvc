@@ -16,6 +16,7 @@ from tqdm import tqdm
 WIDTH = 160
 HEIGHT = 120
 FPS = 10
+FRAMES = 300
 
 ORIG_FPS = 30
 frames_bin = []
@@ -31,7 +32,9 @@ for filepath in tqdm(sorted(glob.glob("frames/*.png"))):
         binary_array = (img_array > 128).astype(np.uint8)
         frames_bin.append(binary_array)
 
+
 frames = np.array(frames_bin, dtype=np.uint8)
+frames = frames[:FRAMES]
 if frames.shape[0] == 0:
     raise SystemExit("No frames selected; check frames directory and fps downsampling")
 

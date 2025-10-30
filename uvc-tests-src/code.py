@@ -12,7 +12,7 @@ fb = display.framebuffer
 print(f"Framebuffer size: {fb.width}x{fb.height}")
 
 # Direct fill - simpler approach
-magenta_bytes = b"\x1f\xf8" * (fb.width * fb.height)  # RGB565 magenta
+magenta_bytes = bytearray(b"\x1f\xf8" * (fb.width * fb.height))
 memoryview(fb)[:] = magenta_bytes
 
 print("Should be showing magenta now")

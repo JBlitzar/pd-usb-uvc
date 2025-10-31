@@ -56,83 +56,94 @@ def flip_bit_inplace(bitbuf: bytearray, idx: int) -> None:
     bitbuf[byte_i] ^= 1 << bit_in_byte
 
 
-with open("crushed_frames.bin", "rb") as f:
-    # initial keyframe
-    first = f.read(BYTES_PER_FRAME)
-    if not first or len(first) < BYTES_PER_FRAME:
-        raise RuntimeError("Invalid stream: missing keyframe")
+f = open("crushed_frames.bin", "rb")
 
-    cur_bits = bytearray(first)
-    render_full_from_bits(cur_bits)
-    display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
-    fb.refresh()
-    gc.collect()
+# initial keyframe
+first = f.read(BYTES_PER_FRAME)
+if not first or len(first) < BYTES_PER_FRAME:
+    raise RuntimeError("Invalid stream: missing keyframe")
 
-    next_time = time.monotonic()
+cur_bits = bytearray(first)
+render_full_from_bits(cur_bits)
+display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
+fb.refresh()
+gc.collect()
 
-    while True:
-        # timing gate for next frame
-        now = time.monotonic()
-        sleep_for = next_time - now
-        if sleep_for > 0:
-            time.sleep(sleep_for)
-        next_time += 1 / FPS
+next_time = time.monotonic()
+frame_count = 0
 
-        # read delta
-        len_bytes = f.read(2)
-        if not len_bytes or len(len_bytes) < 2:
-            # loop: new keyframe
-            f.seek(0)
-            first = f.read(BYTES_PER_FRAME)
-            if not first or len(first) < BYTES_PER_FRAME:
-                raise RuntimeError("Invalid stream after loop: missing keyframe")
-            cur_bits = bytearray(first)
-            render_full_from_bits(cur_bits)
-            display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
-            fb.refresh()
-            gc.collect()
-            continue
+while True:
+    # Every N frames, nuke the file handle
+    if frame_count % 50 == 0 and frame_count > 0:
+        current_position = f.tell()
+        f.close()
+        f = open("crushed_frames.bin", "rb")
+        f.seek(current_position)
 
-        payload_len = len_bytes[0] | (len_bytes[1] << 8)
-        if payload_len == 0:
-            # identical frame; refresh to present
-            display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
-            fb.refresh()
-            gc.collect()
-            continue
+    frame_count += 1
 
-        payload = f.read(payload_len)
-        if not payload or len(payload) < payload_len:
-            # restart from beginning on truncation
-            f.seek(0)
-            first = f.read(BYTES_PER_FRAME)
-            if not first or len(first) < BYTES_PER_FRAME:
-                raise RuntimeError("Invalid stream after truncation: missing keyframe")
-            cur_bits = bytearray(first)
-            render_full_from_bits(cur_bits)
-            display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
-            fb.refresh()
-            gc.collect()
-            continue
+    # timing gate for next frame
+    now = time.monotonic()
+    sleep_for = next_time - now
+    if sleep_for > 0:
+        time.sleep(sleep_for)
+    next_time += 1 / FPS
 
-        # apply flips directly to buffer and cur_bits
-        i = 0
-        while i + 1 < payload_len:
-            idx = payload[i] | (payload[i + 1] << 8)
-            # Guard against malformed indices
-            if idx >= WIDTH * HEIGHT:
-                i += 2
-                continue
-
-            flip_bit_inplace(cur_bits, idx)
-
-            byte_i = idx // 8
-            bit_in_byte = 7 - (idx % 8)
-            on = (cur_bits[byte_i] >> bit_in_byte) & 1
-            buf16[idx] = 0xFFFF if on else 0x0000
-            i += 2
-
-        # present frame after applying deltas
+    # read delta
+    len_bytes = f.read(2)
+    if not len_bytes or len(len_bytes) < 2:
+        # loop: new keyframe
+        f.seek(0)
+        first = f.read(BYTES_PER_FRAME)
+        if not first or len(first) < BYTES_PER_FRAME:
+            raise RuntimeError("Invalid stream after loop: missing keyframe")
+        cur_bits = bytearray(first)
+        render_full_from_bits(cur_bits)
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
         fb.refresh()
         gc.collect()
+        continue
+
+    payload_len = len_bytes[0] | (len_bytes[1] << 8)
+    if payload_len == 0:
+        # identical frame; refresh to present
+        display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
+        fb.refresh()
+        gc.collect()
+        continue
+
+    payload = f.read(payload_len)
+    if not payload or len(payload) < payload_len:
+        # restart from beginning on truncation
+        f.seek(0)
+        first = f.read(BYTES_PER_FRAME)
+        if not first or len(first) < BYTES_PER_FRAME:
+            raise RuntimeError("Invalid stream after truncation: missing keyframe")
+        cur_bits = bytearray(first)
+        render_full_from_bits(cur_bits)
+        display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
+        fb.refresh()
+        gc.collect()
+        continue
+
+    # apply flips directly to buffer and cur_bits
+    i = 0
+    while i + 1 < payload_len:
+        idx = payload[i] | (payload[i + 1] << 8)
+        # Guard against malformed indices
+        if idx >= WIDTH * HEIGHT:
+            i += 2
+            continue
+
+        flip_bit_inplace(cur_bits, idx)
+
+        byte_i = idx // 8
+        bit_in_byte = 7 - (idx % 8)
+        on = (cur_bits[byte_i] >> bit_in_byte) & 1
+        buf16[idx] = 0xFFFF if on else 0x0000
+        i += 2
+
+    # present frame after applying deltas
+    display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
+    fb.refresh()
+    gc.collect()

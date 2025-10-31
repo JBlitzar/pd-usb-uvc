@@ -18,12 +18,18 @@ Deploying on the edge.
 
 > _The hard part of coding isn't the code; it's everything else_
 
-Couldn't be more true in the case of this project. This project was quite literally 20% implementation, 80% troubleshooting. Especially because half of the time there was no error, so I had to troubleshoot and guess blindly a bit. _(Screen enumerates but is all black? weird. Video streams but only when you reload the serial monitor is closed and reopened? cursed.)_ Thank you to all the volunteers who helped test this out (I don't actually own a pico as of the time of writing). I truly appreciate your help.
+This project shows why.
+
+The statement couldn't be more true in the case of this project. Quite literally a 20% implementation, 80% troubleshooting time breakdown. Especially because half of the time there was no error, so I had to troubleshoot and guess blindly a bit. _(Screen enumerates but is all black? weird. Video streams but only when you reload the serial monitor is closed and reopened? cursed.)_ Thank you to all the volunteers who helped test this out (I don't actually own a pico as of the time of writing). I truly appreciate your help.
 
 ## Installation
 
+> [!NOTE]
+> USB UVC on the Pico does not work on Windows! This is an issue with the underlying library / how Windows deals with composite devices and is not something I am able to fix.
+
 - Install Circuitpy firmware
-- Copy everything in `pd-src` into the CIRCUITPY folder.
+- Copy everything in `pd-src` into the CIRCUITPY drive.
+- Physically re-plug in the Pico and check your video devices!
 
 ## Hacking
 

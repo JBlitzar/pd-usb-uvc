@@ -1,0 +1,149 @@
+From https://docs.circuitpython.org/en/latest/shared-bindings/usb_video/index.html
+
+0xCB Gemini
+0xCB Helios
+42. Keebs Frood
+8086 RP2040 Interfacer
+8086 USB Interposer
+Adafruit Feather RP2040
+Adafruit Feather RP2040 Adalogger
+Adafruit Feather RP2040 CAN
+Adafruit Feather RP2040 DVI
+Adafruit Feather RP2040 Prop-Maker
+Adafruit Feather RP2040 RFM
+Adafruit Feather RP2040 Scorpio
+Adafruit Feather RP2040 ThinkInk
+Adafruit Feather RP2040 USB Host
+Adafruit Feather RP2350
+Adafruit Feather RP2350 Adalogger
+Adafruit Floppsy RP2040
+Adafruit Fruit Jam
+Adafruit ItsyBitsy RP2040
+Adafruit KB2040
+Adafruit Macropad RP2040
+Adafruit Metro RP2040
+Adafruit Metro RP2350
+Adafruit QT Py RP2040
+Adafruit QT2040 Trinkey
+Archi RP2040
+Arduino Nano RP2040 Connect
+BBQ20KBD
+BLOK
+Bradán Lane STUDIO Explorer Badge
+COSMO-Pico
+Challenger NB RP2040 WiFi
+Challenger RP2040 LTE
+Challenger RP2040 LoRa
+Challenger RP2040 SD/RTC
+Challenger RP2040 SubGHz
+Challenger RP2040 WiFi
+Challenger RP2040 WiFi/BLE
+Challenger+ RP2350 BConnect
+Challenger+ RP2350 WiFi6/BLE5
+Cytron EDU PICO W
+Cytron IRIV IO Controller
+Cytron MOTION 2350 Pro
+Cytron Maker Nano RP2040
+Cytron Maker Pi RP2040
+Cytron Maker Uno RP2040
+Datanoise PicoADK
+Datanoise PicoADK V2
+E-Fidget
+ELECFREAKS PICO:ED
+Electrolama minik
+EncoderPad RP2040
+Fig Pi
+HEIA-FR Picomo V2
+HEIA-FR Picomo V3
+HXR.DK SAO Digital Multimeter
+Hack Club Sprig
+LILYGO T-DISPLAY
+Maple Computing Elite-Pi
+Melopero Shake RP2040
+Music Thing Modular Workshop Computer
+Noise Nugget 2040
+Oak Dev Tech BREAD2040
+Oak Dev Tech Cast-Away RP2040
+Oak Dev Tech RPGA Feather
+Orpheus Pico
+PROVES Kit v4
+Pajenicko PicoPad
+Pimoroni Badger 2040
+Pimoroni Badger 2040 W
+Pimoroni Inky Frame 5.7
+Pimoroni Inky Frame 7.3
+Pimoroni Interstate 75
+Pimoroni Keybow 2040
+Pimoroni Motor 2040
+Pimoroni PGA2040
+Pimoroni PGA2350
+Pimoroni Pico DV Base W
+Pimoroni Pico LiPo (16MB)
+Pimoroni Pico LiPo (4MB)
+Pimoroni Pico Plus 2
+Pimoroni Pico Plus 2 W
+Pimoroni Pico dv Base
+Pimoroni PicoSystem
+Pimoroni Plasma 2040
+Pimoroni Plasma 2040W
+Pimoroni Plasma 2350
+Pimoroni Plasma 2350W
+Pimoroni Servo 2040
+Pimoroni Tiny 2040 (2MB)
+Pimoroni Tiny 2040 (8MB)
+Pimoroni Tiny 2350
+Pimoroni Tiny FX
+PyKey 18 Numpad
+PyKey 44 Ergo
+PyKey 60
+PyKey 87 TKL
+RF.Guru RP2040
+RP2.65-F
+RP2040 Stamp
+RP2350 Stamp
+RP2350 Stamp XL
+Raspberry Breadstick
+Raspberry Pi Pico
+Raspberry Pi Pico 2
+Raspberry Pi Pico 2 W
+Raspberry Pi Pico W
+Seeeduino XIAO RP2040
+Seeeduino XIAO RP2350
+Silicognition LLC RP2040-Shim
+SparkFun MicroMod RP2040 Processor
+SparkFun Pro Micro RP2040
+SparkFun Pro Micro RP2350
+SparkFun Thing Plus - RP2040
+SparkFun Thing Plus RP2350
+VCC-GND Studio YD RP2040
+W5100S-EVB-Pico
+W5100S-EVB-Pico2
+W5500-EVB-Pico
+W5500-EVB-Pico2
+WK-50 Trackball Keyboard
+Waveshare RP2040-GEEK
+Waveshare RP2040-LCD-0.96
+Waveshare RP2040-LCD-1.28
+Waveshare RP2040-One
+Waveshare RP2040-PiZero
+Waveshare RP2040-Plus (16MB)
+Waveshare RP2040-Plus (4MB)
+Waveshare RP2040-TOUCH-LCD-1.28
+Waveshare RP2040-Tiny
+Waveshare RP2040-Zero
+Waveshare RP2350-GEEK
+Waveshare RP2350-LCD-0.96
+Waveshare RP2350-LCD-1.28
+Waveshare RP2350-One
+Waveshare RP2350-Plus
+Waveshare RP2350-TOUCH-LCD-1.28
+Waveshare RP2350-Tiny
+Waveshare RP2350-Zero
+WeAct Studio Pico
+WeAct Studio Pico 16MB
+WisdPi Ardu2040M
+WisdPi Tiny RP2040
+nullbits Bit-C PRO
+splitkb.com Liatris
+takayoshiotake Octave RP2040
+uGame22

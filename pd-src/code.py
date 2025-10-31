@@ -16,7 +16,7 @@ BYTES_PER_FRAME = BYTES_PER_ROW * HEIGHT
 # https://docs.circuitpython.org/en/latest/shared-bindings/usb_video/index.html#module-usb_video
 displayio.release_displays()
 fb = usb_video.USBFramebuffer()
-display = framebufferio.FramebufferDisplay(fb)
+display = framebufferio.FramebufferDisplay(fb, auto_refresh=True)
 
 # Framebuffer is 16-bit RGB565 elements
 buf16 = memoryview(fb)
@@ -64,7 +64,7 @@ with open("crushed_frames.bin", "rb") as f:
 
     cur_bits = bytearray(first)
     render_full_from_bits(cur_bits)
-    display.refresh()
+    display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
 
     next_time = time.monotonic()
 
@@ -86,13 +86,13 @@ with open("crushed_frames.bin", "rb") as f:
                 raise RuntimeError("Invalid stream after loop: missing keyframe")
             cur_bits = bytearray(first)
             render_full_from_bits(cur_bits)
-            display.refresh()
+            display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
             continue
 
         payload_len = len_bytes[0] | (len_bytes[1] << 8)
         if payload_len == 0:
             # identical frame; refresh to present
-            display.refresh()
+            display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
             continue
 
         payload = f.read(payload_len)
@@ -104,7 +104,7 @@ with open("crushed_frames.bin", "rb") as f:
                 raise RuntimeError("Invalid stream after truncation: missing keyframe")
             cur_bits = bytearray(first)
             render_full_from_bits(cur_bits)
-            display.refresh()
+            display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
             continue
 
         # apply flips directly to buffer and cur_bits
@@ -125,4 +125,4 @@ with open("crushed_frames.bin", "rb") as f:
             i += 2
 
         # present frame after applying deltas
-        display.refresh()
+        display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)

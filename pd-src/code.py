@@ -65,6 +65,7 @@ with open("crushed_frames.bin", "rb") as f:
     cur_bits = bytearray(first)
     render_full_from_bits(cur_bits)
     display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
+    fb.refresh()
 
     next_time = time.monotonic()
 
@@ -87,12 +88,14 @@ with open("crushed_frames.bin", "rb") as f:
             cur_bits = bytearray(first)
             render_full_from_bits(cur_bits)
             display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
+            fb.refresh()
             continue
 
         payload_len = len_bytes[0] | (len_bytes[1] << 8)
         if payload_len == 0:
             # identical frame; refresh to present
             display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
+            fb.refresh()
             continue
 
         payload = f.read(payload_len)
@@ -105,6 +108,7 @@ with open("crushed_frames.bin", "rb") as f:
             cur_bits = bytearray(first)
             render_full_from_bits(cur_bits)
             display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
+            fb.refresh()
             continue
 
         # apply flips directly to buffer and cur_bits
@@ -126,3 +130,4 @@ with open("crushed_frames.bin", "rb") as f:
 
         # present frame after applying deltas
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
+        fb.refresh()

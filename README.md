@@ -4,7 +4,7 @@ https://github.com/user-attachments/assets/b60fbd34-49d6-4a2f-8e0a-33bf9a720d01
 
 <img src=readme/demo-linux.png style="width: 50%">
 
-Play Bad Apple from your pico! Project enumerates as a webcam and streams bad apple at 160x120 resolution. First working standalone utilization of usb_video module published on [Github](https://github.com/search?q=%22import+usb_video%22+language%3APython+path%3A*.py+NOT+%22thonny%22&type=code) as far as I can tell
+Streams bad apple to webcam stream using the pico! Project enumerates as a webcam and streams bad apple at 160x120 resolution. First working standalone utilization of usb_video module published on [Github](https://github.com/search?q=%22import+usb_video%22+language%3APython+path%3A*.py+NOT+%22thonny%22&type=code) as far as I can tell
 
 _has been tested on Xiao RP2040!_
 

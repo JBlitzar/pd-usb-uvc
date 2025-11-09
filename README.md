@@ -30,7 +30,7 @@ The second (and more daunting) problem that only revealed itself later was the s
 
 This project shows why.
 
-The statement couldn't be more true in the case of this project. Quite literally a 20% implementation, 80% troubleshooting time breakdown. Especially because half of the time there was no error, so I had to troubleshoot and guess blindly a bit. _(Screen enumerates but is all black? weird. Video streams but only when you reload the serial monitor is closed and reopened? cursed.)_ Thank you to all the volunteers who helped test this out (I don't actually own a pico as of the time of writing). I truly appreciate your help.
+The statement couldn't be more true in the case of this project. Quite literally a 20% implementation, 80% troubleshooting time breakdown. Especially because half of the time there was no error, so I had to troubleshoot and guess blindly a bit. _(Screen enumerates but is all black? weird. Video streams but only when you reload the serial monitor is closed and reopened? cursed.)_ Even more so, this was built entirely via proxy testing with volunteers. So thank you to all the volunteers who helped test this out (I don't actually own a pico as of the time of writing). I truly appreciate your help.
 
 ## Installation
 

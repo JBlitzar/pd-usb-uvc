@@ -8,6 +8,17 @@ Streams the *Bad Apple* video to webcam stream using the pico at 160x120 resolut
 
 _has been tested on Xiao RP2040!_
 
+## Why This Exists
+
+CircuitPython's `usb_video` module is barely documented and has exactly one other working example on GitHub (which throws type errors). This project serves as:
+
+1. A complete, working reference implementation
+2. Documentation of platform quirks and workarounds
+3. Proof that USB webcam emulation is possible on the Pico
+4. A collection of performance optimizations for constrained environments
+
+If you're trying to use `usb_video` in your own project, this codebase may be the most complete resource available.
+
 ## Technical details
 
 ### File format

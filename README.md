@@ -19,6 +19,8 @@ CircuitPython's `usb_video` module is barely documented and has exactly one othe
 
 If you're trying to use `usb_video` in your own project, this codebase may be the most complete resource available.
 
+The rest of the documentation I've managed to scrape together is located in (pd-src/boot.py)[https://github.com/JBlitzar/pd-usb-uvc/blob/main/pd-src/boot.py]
+
 ## Technical details
 
 ### File format

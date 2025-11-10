@@ -21,4 +21,5 @@ for i in range(total_pixels):
     buf[pos + 1] = byte1
 print("Refreshing display...")
 display.refresh()
+fb.refresh()
 print("Done! Should be magenta now!")

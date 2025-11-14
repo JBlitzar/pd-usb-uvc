@@ -44,6 +44,7 @@ print("Selected frames:", frames.shape)
 H, W = HEIGHT, WIDTH
 BYTES_PER_ROW = (W + 7) // 8
 BYTES_PER_FRAME = BYTES_PER_ROW * H
+KEYFRAME_MARKER = 0xFFFF
 
 
 def pack_bits(frame_bool: np.ndarray) -> bytes:
@@ -56,9 +57,16 @@ delta_sizes = []
 def encode_delta(prev: np.ndarray, cur: np.ndarray) -> bytes:
     xor = prev ^ cur
     ys, xs = np.nonzero(xor)
-    delta_sizes.append(ys.size)
-    if ys.size == 0:
+    changed = int(ys.size)
+    delta_sizes.append(changed)
+    if changed == 0:
         return (0).to_bytes(2, "little")
+
+    # If sending a full bitpacked frame (plus 2B header) is smaller than deltas,
+    # mark as keyframe and include the full frame bytes.
+    if BYTES_PER_FRAME < changed * 2:
+        return KEYFRAME_MARKER.to_bytes(2, "little") + pack_bits(cur)
+
     idxs = (ys.astype(np.int32) * W + xs.astype(np.int32)).astype(np.uint16)
     payload = bytearray(2 * idxs.size)
     j = 0

@@ -4,7 +4,8 @@
 
   - in this case, 10 fps, 2190 frames, 160x120.
 
-- first frame (keyframe): bitpacked data (width \* height / 8 bytes long, to be interpreted for each bit to be a pixel)
-- each subsequent frame:
-  - Data length in bytes (2 bytes numerical representation)
-  - Two bytes to represent index of pixel flipped (to be interpreted as flattened indices of pixels to flip)
+- first frame (keyframe): bitpacked data (width * height / 8 bytes long, MSB-first per byte)
+- each subsequent frame begins with a 2-byte little-endian header, followed by payload:
+  - 0x0000: no changes (repeat previous frame)
+  - 0xFFFF: keyframe — next (width * height / 8) bytes are a full bitpacked frame
+  - any other even value N: delta — N bytes follow, interpreted as a list of 2-byte little-endian pixel indices (flattened y * width + x) to flip

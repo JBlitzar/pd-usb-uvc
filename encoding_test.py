@@ -15,6 +15,7 @@ HEIGHT = 120
 FPS = 10
 BYTES_PER_ROW = (WIDTH + 7) // 8
 BYTES_PER_FRAME = BYTES_PER_ROW * HEIGHT
+KEYFRAME_MARKER = 0xFFFF
 
 fb = bytearray(WIDTH * HEIGHT)
 buf = memoryview(fb)
@@ -81,6 +82,16 @@ with open("pd-src/crushed_frames.bin", "rb") as f:
 
         payload_len = len_bytes[0] | (len_bytes[1] << 8)
         if payload_len == 0:
+            continue
+
+        if payload_len == KEYFRAME_MARKER:
+            key = f.read(BYTES_PER_FRAME)
+            if not key or len(key) < BYTES_PER_FRAME:
+                f.seek(0)
+                key = f.read(BYTES_PER_FRAME)
+                if not key or len(key) < BYTES_PER_FRAME:
+                    raise SystemExit("Invalid stream after keyframe: missing data")
+            cur_bits[:] = key
             continue
 
         payload = f.read(payload_len)

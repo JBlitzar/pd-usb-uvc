@@ -10,16 +10,10 @@ print(f"Filling {fb.width}x{fb.height} with magenta...")
 buf = memoryview(fb)
 total_pixels = fb.width * fb.height
 # RGB565 magenta bytes
-byte0 = 0x1F
-byte1 = 0xF8
-# Write pixel by pixel
-# all that matters is that 0xFFFF is white and 0x0000 is black
-# this magenta shows up as green, haha
-# I think byte0 and byte1 just have to be swapped? 
+
 for i in range(total_pixels):
-    pos = i * 2
-    buf[pos] = byte0
-    buf[pos + 1] = byte1
+    buf[i] = 0x1FF8
+
 print("Refreshing display...")
 display.refresh()
 fb.refresh()

@@ -11,6 +11,7 @@ HEIGHT = 120
 FPS = 10
 BYTES_PER_ROW = (WIDTH + 7) // 8
 BYTES_PER_FRAME = BYTES_PER_ROW * HEIGHT
+KEYFRAME_MARKER = 0xFFFF
 
 
 # https://docs.circuitpython.org/en/latest/shared-bindings/usb_video/index.html#module-usb_video
@@ -107,6 +108,24 @@ while True:
     payload_len = len_bytes[0] | (len_bytes[1] << 8)
     if payload_len == 0:
         # identical frame; refresh to present
+        display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
+        fb.refresh()
+        gc.collect()
+        continue
+
+    if payload_len == KEYFRAME_MARKER:
+        # next BYTES_PER_FRAME bytes are a full keyframe
+        key = f.read(BYTES_PER_FRAME)
+        if not key or len(key) < BYTES_PER_FRAME:
+            # restart from beginning on truncation
+            f.seek(0)
+            first = f.read(BYTES_PER_FRAME)
+            if not first or len(first) < BYTES_PER_FRAME:
+                raise RuntimeError("Invalid stream after keyframe: missing data")
+            cur_bits = bytearray(first)
+        else:
+            cur_bits = bytearray(key)
+        render_full_from_bits(cur_bits)
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
         fb.refresh()
         gc.collect()

@@ -33,6 +33,9 @@ for b in range(256):
 
 mv_lookup = BIT8_TO_RGB565
 
+# Precompute bit masks for per-pixel toggles
+MASKS = array("B", [0x80 >> i for i in range(8)])
+
 
 def render_full_from_bits(frame_bits: bytes) -> None:
     for y in range(HEIGHT):
@@ -52,9 +55,10 @@ def render_full_from_bits(frame_bits: bytes) -> None:
 
 
 def flip_bit_inplace(bitbuf: bytearray, idx: int) -> None:
-    byte_i = idx // 8
-    bit_in_byte = 7 - (idx % 8)
-    bitbuf[byte_i] ^= 1 << bit_in_byte
+    # Kept for reference; not used in hot path
+    byte_i = idx >> 3
+    mask = MASKS[idx & 7]
+    bitbuf[byte_i] ^= mask
 
 
 f = open("crushed_frames.bin", "rb")
@@ -102,7 +106,8 @@ while True:
         render_full_from_bits(cur_bits)
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
         fb.refresh()
-        gc.collect()
+        if (frame_count % 20) == 0:
+            gc.collect()
         continue
 
     payload_len = len_bytes[0] | (len_bytes[1] << 8)
@@ -110,7 +115,8 @@ while True:
         # identical frame; refresh to present
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
         fb.refresh()
-        gc.collect()
+        if (frame_count % 20) == 0:
+            gc.collect()
         continue
 
     if payload_len == KEYFRAME_MARKER:
@@ -128,7 +134,8 @@ while True:
         render_full_from_bits(cur_bits)
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
         fb.refresh()
-        gc.collect()
+        if (frame_count % 20) == 0:
+            gc.collect()
         continue
 
     payload = f.read(payload_len)
@@ -142,27 +149,28 @@ while True:
         render_full_from_bits(cur_bits)
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
         fb.refresh()
-        gc.collect()
+        if (frame_count % 20) == 0:
+            gc.collect()
         continue
 
-    # apply flips directly to buffer and cur_bits
-    i = 0
-    while i + 1 < payload_len:
+    # apply flips with minimized Python overhead
+    max_idx = WIDTH * HEIGHT
+    masks = MASKS
+    b16 = buf16
+    bits = cur_bits
+    for i in range(0, payload_len, 2):
         idx = payload[i] | (payload[i + 1] << 8)
-        # Guard against malformed indices
-        if idx >= WIDTH * HEIGHT:
-            i += 2
+        if idx >= max_idx:
             continue
-
-        flip_bit_inplace(cur_bits, idx)
-
-        byte_i = idx // 8
-        bit_in_byte = 7 - (idx % 8)
-        on = (cur_bits[byte_i] >> bit_in_byte) & 1
-        buf16[idx] = 0xFFFF if on else 0x0000
-        i += 2
+        byte_i = idx >> 3
+        mask = masks[idx & 7]
+        val = bits[byte_i] ^ mask
+        bits[byte_i] = val
+        on = 1 if (val & mask) else 0
+        b16[idx] = 0xFFFF if on else 0x0000
 
     # present frame after applying deltas
     display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
     fb.refresh()
-    gc.collect()
+    if (frame_count % 20) == 0:
+        gc.collect()

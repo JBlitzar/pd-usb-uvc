@@ -8,7 +8,7 @@ from array import array
 
 WIDTH = 160
 HEIGHT = 120
-FPS = 10
+FPS = 5
 BYTES_PER_ROW = (WIDTH + 7) // 8
 BYTES_PER_FRAME = BYTES_PER_ROW * HEIGHT
 KEYFRAME_MARKER = 0xFFFF
@@ -46,12 +46,23 @@ def render_full_from_bits(frame_bits: bytes) -> None:
             lookup_base = b * 8
 
             remaining_pixels = WIDTH - (byte_index * 8)
-            num_pixels = 8 if remaining_pixels >= 8 else remaining_pixels
 
-            for k in range(num_pixels):
-                dst_pos = base_fb + (byte_index * 8 + k)
-                src_pos = lookup_base + k
+            if remaining_pixels >= 8:
+                dst_pos = base_fb + (byte_index * 8)
+                src_pos = lookup_base
                 buf16[dst_pos] = mv_lookup[src_pos]
+                buf16[dst_pos + 1] = mv_lookup[src_pos + 1]
+                buf16[dst_pos + 2] = mv_lookup[src_pos + 2]
+                buf16[dst_pos + 3] = mv_lookup[src_pos + 3]
+                buf16[dst_pos + 4] = mv_lookup[src_pos + 4]
+                buf16[dst_pos + 5] = mv_lookup[src_pos + 5]
+                buf16[dst_pos + 6] = mv_lookup[src_pos + 6]
+                buf16[dst_pos + 7] = mv_lookup[src_pos + 7]
+            else:
+                for k in range(remaining_pixels):
+                    dst_pos = base_fb + (byte_index * 8 + k)
+                    src_pos = lookup_base + k
+                    buf16[dst_pos] = mv_lookup[src_pos]
 
 
 def flip_bit_inplace(bitbuf: bytearray, idx: int) -> None:

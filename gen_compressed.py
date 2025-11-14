@@ -15,8 +15,8 @@ from tqdm import tqdm
 
 WIDTH = 160
 HEIGHT = 120
-FPS = 10
-FRAMES = 1000
+FPS = 5
+FRAMES = 2190
 
 ORIG_FPS = 30
 frames_bin = []

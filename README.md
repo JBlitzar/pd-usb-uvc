@@ -31,6 +31,8 @@ The foremost constraints are those of storage space and compute power. I downsca
 
 The pico reads the file in a streaming manner so as to not hold all of it in memory. (Although I ended up getting OOM anyways: the solution was to occasionally close and reopen the file and then `.seek()` to the last location to pick back up where it left off)
 
+I later improved further upon this. Most bad apple frames have small deltas, but a few (scene changes), have very large deltas. In this case, it's more efficient to store these as keyframes, since you get 16x compression when bitpacking as opposed to needing to store each changed pixel as two bytes. I implemented a simple heuristic and frame header to allow for this. The threshold can be tuned; ultimately, it's a tradeoff between storage space and decoding speed. If your pico has more space, then by all means, increase the keyframe threshold.
+
 FrameBuffer expects pixel values to be in the "RGB 565 Swapped" pixel format. Who knows what that means? Luckily, pretty much universally black is all `0x0000`s and white is all `0xffff`s. At one point I tried to fill the screen with magenta and it turned out green so ¯\\\_(ツ)\_/¯ (I think I swapped it one too many times in the end. Working code that produces magenta is in `uvc-tests-src/`).
 
 See the code in action! Parsing and preparation is done in [gen_compressed.py](gen_compressed.py) while decoding and streaming is in [pd-src/code.py](pd-src/code.py)
@@ -57,11 +59,11 @@ CircuitPython on the RP2040 runs at an effective **1.13 MHz**. Despite the chip 
 - **CircuitPython performance:** ~1.1 million Python operations/second
 - **Effective speed:** Comparable to a 1982 Commodore 64
 
-Of course, the real solution is to write your code in C for a literal 100x speedup. Interpreted micropython on a microcontroller under performance constraints is kind of ridiculous. But constraints breed creativity. Plus, it's a pain to reflash every time.
+Of course, the real solution is to write your code in C for a literal 100x speedup. Interpreted circuitpython on a microcontroller under performance constraints is kind of ridiculous. But constraints breed creativity. Plus, it's a pain to reflash every time.
 
 ### Loop Unrolling: A 1970s Technique in 2025
 
-The biggest bottleneck was keyframe rendering - processing all 19,200 pixels. Approximately 1/4 of frames are determined to be keyframes (optimized for file size). This means lag and frame skipping 1/4 of the time.
+The biggest bottleneck was keyframe rendering - processing all 19,200 pixels. Approximately 2/5 of frames are determined to be keyframes (optimized for file size). This means lag and frame skipping 2/5 of the time.
 
 Solution: Manual 4x loop unrolling (processing four bytes at a time) reduced loop iterations by 75%, yielding a **1.31x speedup**. This single optimization took keyframe rendering from ~180ms to ~137ms, making 10 FPS feasible(-ish).
 

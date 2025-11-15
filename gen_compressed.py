@@ -18,6 +18,8 @@ HEIGHT = 120
 FPS = 10
 FRAMES = 1000
 
+KEYFRAME_THRESH = 3000  # 1200 for smallest size. Higher = faster processing but larger file. Set it as high as you have storage space for
+
 ORIG_FPS = 30
 frames_bin = []
 for filepath in tqdm(sorted(glob.glob("frames/*.png"))):
@@ -64,7 +66,10 @@ def encode_delta(prev: np.ndarray, cur: np.ndarray) -> bytes:
 
     # If sending a full bitpacked frame (plus 2B header) is smaller than deltas,
     # mark as keyframe and include the full frame bytes.
-    if BYTES_PER_FRAME < changed * 2:
+    # if changed * 2 >= BYTES_PER_FRAME:
+
+    # If more than KEYFRAME_THRESH pixels changed, send keyframe instead
+    if changed > KEYFRAME_THRESH:
         return KEYFRAME_MARKER.to_bytes(2, "little") + pack_bits(cur)
 
     idxs = (ys.astype(np.int32) * W + xs.astype(np.int32)).astype(np.uint16)
@@ -109,3 +114,8 @@ keyframes = sum(1 for size in delta_sizes if size > BYTES_PER_FRAME // 2)
 delta_frames = total_deltas - keyframes
 print(f" keyframes generated: {keyframes + 1}")  # +1 for initial keyframe
 print(f" delta frames: {delta_frames}")
+with open("perf-testing/delta_sizes.txt", "w") as f:
+    for i, size in enumerate(delta_sizes):
+        if i > 0:
+            f.write(",")
+        f.write(f"{size}")

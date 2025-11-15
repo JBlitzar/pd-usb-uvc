@@ -4,11 +4,7 @@ A full UVC webcam implementation running entirely on the Raspberry Pi Pico.
 
 This project turns a Pico (RP2040/RP2350) into a functioning USB webcam that plays a compressed 160x120 video at roughly 9–10 FPS. It uses a custom bitpacked/XOR-diff video format, a lightweight streaming decoder, and a highly optimized renderer that pushes CircuitPython to its limits. If you want to stream arbitrary video over USB from a microcontroller, this repo shows exactly how to make it work.
 
-
 https://github.com/user-attachments/assets/c71bba60-4e2d-45cc-b5af-98f38747aaaa
-
-
-
 
 <img src=readme/demo-linux.png style="width: 50%">
 
@@ -77,7 +73,7 @@ Real measurements on RP2040:
 - **Delta frames:** 4-59ms (varies depending on size of delta)
 - **Target:** 100ms per frame (10 FPS)
 
-With 25% keyframe rate, we achieve ~9 FPS average with occasional stutters on keyframes. More loop unrolling would lead to exponential diminishing returns.
+With 25% keyframe rate, we achieve ~9 FPS average with occasional stutters on keyframes. More loop unrolling would lead to exponential diminishing returns; you're not going to notice -2.5ms on 115ms keyframes.
 
 Run it at 7fps if you don't like the stutters, I guess.
 

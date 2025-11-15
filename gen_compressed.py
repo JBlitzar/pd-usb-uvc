@@ -15,8 +15,8 @@ from tqdm import tqdm
 
 WIDTH = 160
 HEIGHT = 120
-FPS = 5
-FRAMES = 2190
+FPS = 10
+FRAMES = 1000
 
 ORIG_FPS = 30
 frames_bin = []
@@ -104,3 +104,8 @@ print(" q1 changed pixels per frame:", q1_changed)
 print(" q3 changed pixels per frame:", q3_changed)
 print(" min changed pixels per frame:", min_changed)
 print(" max changed pixels per frame:", max_changed)
+
+keyframes = sum(1 for size in delta_sizes if size > BYTES_PER_FRAME // 2)
+delta_frames = total_deltas - keyframes
+print(f" keyframes generated: {keyframes + 1}")  # +1 for initial keyframe
+print(f" delta frames: {delta_frames}")

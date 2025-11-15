@@ -8,7 +8,7 @@ from array import array
 
 WIDTH = 160
 HEIGHT = 120
-FPS = 5
+FPS = 10
 BYTES_PER_ROW = (WIDTH + 7) // 8
 BYTES_PER_FRAME = BYTES_PER_ROW * HEIGHT
 KEYFRAME_MARKER = 0xFFFF
@@ -41,28 +41,86 @@ def render_full_from_bits(frame_bits: bytes) -> None:
     for y in range(HEIGHT):
         row_offset = y * BYTES_PER_ROW
         base_fb = y * WIDTH
-        for byte_index in range(BYTES_PER_ROW):
+        byte_index = 0
+
+        # Process 4 bytes at a time (32 pixels)
+        while byte_index <= BYTES_PER_ROW - 4:
+            # Byte 0
             b = frame_bits[row_offset + byte_index]
             lookup_base = b * 8
+            dst_pos = base_fb + (byte_index * 8)
+            buf16[dst_pos] = mv_lookup[lookup_base]
+            buf16[dst_pos + 1] = mv_lookup[lookup_base + 1]
+            buf16[dst_pos + 2] = mv_lookup[lookup_base + 2]
+            buf16[dst_pos + 3] = mv_lookup[lookup_base + 3]
+            buf16[dst_pos + 4] = mv_lookup[lookup_base + 4]
+            buf16[dst_pos + 5] = mv_lookup[lookup_base + 5]
+            buf16[dst_pos + 6] = mv_lookup[lookup_base + 6]
+            buf16[dst_pos + 7] = mv_lookup[lookup_base + 7]
 
+            # Byte 1
+            b = frame_bits[row_offset + byte_index + 1]
+            lookup_base = b * 8
+            dst_pos = base_fb + ((byte_index + 1) * 8)
+            buf16[dst_pos] = mv_lookup[lookup_base]
+            buf16[dst_pos + 1] = mv_lookup[lookup_base + 1]
+            buf16[dst_pos + 2] = mv_lookup[lookup_base + 2]
+            buf16[dst_pos + 3] = mv_lookup[lookup_base + 3]
+            buf16[dst_pos + 4] = mv_lookup[lookup_base + 4]
+            buf16[dst_pos + 5] = mv_lookup[lookup_base + 5]
+            buf16[dst_pos + 6] = mv_lookup[lookup_base + 6]
+            buf16[dst_pos + 7] = mv_lookup[lookup_base + 7]
+
+            # Byte 2
+            b = frame_bits[row_offset + byte_index + 2]
+            lookup_base = b * 8
+            dst_pos = base_fb + ((byte_index + 2) * 8)
+            buf16[dst_pos] = mv_lookup[lookup_base]
+            buf16[dst_pos + 1] = mv_lookup[lookup_base + 1]
+            buf16[dst_pos + 2] = mv_lookup[lookup_base + 2]
+            buf16[dst_pos + 3] = mv_lookup[lookup_base + 3]
+            buf16[dst_pos + 4] = mv_lookup[lookup_base + 4]
+            buf16[dst_pos + 5] = mv_lookup[lookup_base + 5]
+            buf16[dst_pos + 6] = mv_lookup[lookup_base + 6]
+            buf16[dst_pos + 7] = mv_lookup[lookup_base + 7]
+
+            # Byte 3
+            b = frame_bits[row_offset + byte_index + 3]
+            lookup_base = b * 8
+            dst_pos = base_fb + ((byte_index + 3) * 8)
+            buf16[dst_pos] = mv_lookup[lookup_base]
+            buf16[dst_pos + 1] = mv_lookup[lookup_base + 1]
+            buf16[dst_pos + 2] = mv_lookup[lookup_base + 2]
+            buf16[dst_pos + 3] = mv_lookup[lookup_base + 3]
+            buf16[dst_pos + 4] = mv_lookup[lookup_base + 4]
+            buf16[dst_pos + 5] = mv_lookup[lookup_base + 5]
+            buf16[dst_pos + 6] = mv_lookup[lookup_base + 6]
+            buf16[dst_pos + 7] = mv_lookup[lookup_base + 7]
+
+            byte_index += 4
+
+        # Cleanup remaining bytes
+        while byte_index < BYTES_PER_ROW:
+            b = frame_bits[row_offset + byte_index]
+            lookup_base = b * 8
             remaining_pixels = WIDTH - (byte_index * 8)
 
             if remaining_pixels >= 8:
                 dst_pos = base_fb + (byte_index * 8)
-                src_pos = lookup_base
-                buf16[dst_pos] = mv_lookup[src_pos]
-                buf16[dst_pos + 1] = mv_lookup[src_pos + 1]
-                buf16[dst_pos + 2] = mv_lookup[src_pos + 2]
-                buf16[dst_pos + 3] = mv_lookup[src_pos + 3]
-                buf16[dst_pos + 4] = mv_lookup[src_pos + 4]
-                buf16[dst_pos + 5] = mv_lookup[src_pos + 5]
-                buf16[dst_pos + 6] = mv_lookup[src_pos + 6]
-                buf16[dst_pos + 7] = mv_lookup[src_pos + 7]
+                buf16[dst_pos] = mv_lookup[lookup_base]
+                buf16[dst_pos + 1] = mv_lookup[lookup_base + 1]
+                buf16[dst_pos + 2] = mv_lookup[lookup_base + 2]
+                buf16[dst_pos + 3] = mv_lookup[lookup_base + 3]
+                buf16[dst_pos + 4] = mv_lookup[lookup_base + 4]
+                buf16[dst_pos + 5] = mv_lookup[lookup_base + 5]
+                buf16[dst_pos + 6] = mv_lookup[lookup_base + 6]
+                buf16[dst_pos + 7] = mv_lookup[lookup_base + 7]
             else:
                 for k in range(remaining_pixels):
                     dst_pos = base_fb + (byte_index * 8 + k)
-                    src_pos = lookup_base + k
-                    buf16[dst_pos] = mv_lookup[src_pos]
+                    buf16[dst_pos] = mv_lookup[lookup_base + k]
+
+            byte_index += 1
 
 
 def flip_bit_inplace(bitbuf: bytearray, idx: int) -> None:
@@ -169,16 +227,58 @@ while True:
     masks = MASKS
     b16 = buf16
     bits = cur_bits
-    for i in range(0, payload_len, 2):
+    i = 0
+
+    # Process 4 deltas at a time
+    while i <= payload_len - 8:  # Need 8 bytes for 4 pairs
+        # Delta 1
         idx = payload[i] | (payload[i + 1] << 8)
-        if idx >= max_idx:
-            continue
-        byte_i = idx >> 3
-        mask = masks[idx & 7]
-        val = bits[byte_i] ^ mask
-        bits[byte_i] = val
-        on = 1 if (val & mask) else 0
-        b16[idx] = 0xFFFF if on else 0x0000
+        if idx < max_idx:
+            byte_i = idx >> 3
+            mask = masks[idx & 7]
+            val = bits[byte_i] ^ mask
+            bits[byte_i] = val
+            b16[idx] = 0xFFFF if (val & mask) else 0x0000
+
+        # Delta 2
+        idx = payload[i + 2] | (payload[i + 3] << 8)
+        if idx < max_idx:
+            byte_i = idx >> 3
+            mask = masks[idx & 7]
+            val = bits[byte_i] ^ mask
+            bits[byte_i] = val
+            b16[idx] = 0xFFFF if (val & mask) else 0x0000
+
+        # Delta 3
+        idx = payload[i + 4] | (payload[i + 5] << 8)
+        if idx < max_idx:
+            byte_i = idx >> 3
+            mask = masks[idx & 7]
+            val = bits[byte_i] ^ mask
+            bits[byte_i] = val
+            b16[idx] = 0xFFFF if (val & mask) else 0x0000
+
+        # Delta 4
+        idx = payload[i + 6] | (payload[i + 7] << 8)
+        if idx < max_idx:
+            byte_i = idx >> 3
+            mask = masks[idx & 7]
+            val = bits[byte_i] ^ mask
+            bits[byte_i] = val
+            b16[idx] = 0xFFFF if (val & mask) else 0x0000
+
+        i += 8
+
+    # Cleanup remaining deltas
+    while i < payload_len:
+        idx = payload[i] | (payload[i + 1] << 8)
+        if idx < max_idx:
+            byte_i = idx >> 3
+            mask = masks[idx & 7]
+            val = bits[byte_i] ^ mask
+            bits[byte_i] = val
+            b16[idx] = 0xFFFF if (val & mask) else 0x0000
+        i += 2
 
     # present frame after applying deltas
     display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)

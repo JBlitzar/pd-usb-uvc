@@ -5,6 +5,7 @@ import time
 import gc
 from array import array
 
+DEBUG = False
 
 WIDTH = 160
 HEIGHT = 120
@@ -12,7 +13,6 @@ FPS = 10
 BYTES_PER_ROW = (WIDTH + 7) // 8
 BYTES_PER_FRAME = BYTES_PER_ROW * HEIGHT
 KEYFRAME_MARKER = 0xFFFF
-
 
 # https://docs.circuitpython.org/en/latest/shared-bindings/usb_video/index.html#module-usb_video
 displayio.release_displays()
@@ -138,7 +138,15 @@ if not first or len(first) < BYTES_PER_FRAME:
     raise RuntimeError("Invalid stream: missing keyframe")
 
 cur_bits = bytearray(first)
+
+# Before keyframe render
+if DEBUG:
+    t_start = time.monotonic()
 render_full_from_bits(cur_bits)
+if DEBUG:
+    t_end = time.monotonic()
+    print(f"Keyframe render: {(t_end - t_start) * 1000:.1f}ms")
+
 display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
 fb.refresh()
 gc.collect()
@@ -172,10 +180,18 @@ while True:
         if not first or len(first) < BYTES_PER_FRAME:
             raise RuntimeError("Invalid stream after loop: missing keyframe")
         cur_bits = bytearray(first)
+
+        # Before keyframe render
+        if DEBUG:
+            t_start = time.monotonic()
         render_full_from_bits(cur_bits)
+        if DEBUG:
+            t_end = time.monotonic()
+            print(f"Keyframe render: {(t_end - t_start) * 1000:.1f}ms")
+
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
         fb.refresh()
-        if (frame_count % 20) == 0:
+        if frame_count % 20 == 0:
             gc.collect()
         continue
 
@@ -184,7 +200,7 @@ while True:
         # identical frame; refresh to present
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
         fb.refresh()
-        if (frame_count % 20) == 0:
+        if frame_count % 20 == 0:
             gc.collect()
         continue
 
@@ -200,10 +216,18 @@ while True:
             cur_bits = bytearray(first)
         else:
             cur_bits = bytearray(key)
+
+        # Before keyframe render
+        if DEBUG:
+            t_start = time.monotonic()
         render_full_from_bits(cur_bits)
+        if DEBUG:
+            t_end = time.monotonic()
+            print(f"Keyframe render: {(t_end - t_start) * 1000:.1f}ms")
+
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
         fb.refresh()
-        if (frame_count % 20) == 0:
+        if frame_count % 20 == 0:
             gc.collect()
         continue
 
@@ -218,11 +242,14 @@ while True:
         render_full_from_bits(cur_bits)
         display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
         fb.refresh()
-        if (frame_count % 20) == 0:
+        if frame_count % 20 == 0:
             gc.collect()
         continue
 
     # apply flips with minimized Python overhead
+    if DEBUG:
+        t_start = time.monotonic()
+
     max_idx = WIDTH * HEIGHT
     masks = MASKS
     b16 = buf16
@@ -280,8 +307,12 @@ while True:
             b16[idx] = 0xFFFF if (val & mask) else 0x0000
         i += 2
 
+    if DEBUG:
+        t_end = time.monotonic()
+        print(f"Delta frame: {(t_end - t_start) * 1000:.1f}ms")
+
     # present frame after applying deltas
     display.refresh(target_frames_per_second=10, minimum_frames_per_second=0)
     fb.refresh()
-    if (frame_count % 20) == 0:
+    if frame_count % 20 == 0:
         gc.collect()

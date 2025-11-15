@@ -45,12 +45,44 @@ This project shows why.
 
 The statement couldn't be more true in the case of this project. Quite literally a 20% implementation, 80% troubleshooting time breakdown. Especially because half of the time there was no error, so I had to troubleshoot and guess blindly a bit. _(Screen enumerates but is all black? weird. Video streams but only when you reload the serial monitor is closed and reopened? cursed.)_ Even more so, this was built entirely via proxy testing with volunteers. So thank you to all the volunteers who helped test this out. I truly appreciate your help.
 
+## Performance Deep Dive
+
+### The Interpreter Overhead Problem
+
+CircuitPython on the RP2040 runs at an effective **1.13 MHz**. Despite the chip running at 133 MHz, the Python interpreter adds ~118x overhead. Benchmarking shows:
+
+- **Native ARM performance:** 133 million instructions/second
+- **CircuitPython performance:** ~1.1 million Python operations/second
+- **Effective speed:** Comparable to a 1982 Commodore 64
+
+Of course, the real solution is to write your code in C for a literal 100x speedup. Interpreted micropython on a microcontroller under performance constraints is kind of ridiculous. But constraints breed creativity. Plus, it's a pain to reflash every time.
+
+### Loop Unrolling: A 1970s Technique in 2025
+
+The biggest bottleneck was keyframe rendering - processing all 19,200 pixels. Approximately 1/4 of frames are determined to be keyframes (optimized for file size). This means lag and frame skipping 1/4 of the time.
+
+Solution: Manual 4x loop unrolling (processing four bytes at a time) reduced loop iterations by 75%, yielding a **1.31x speedup**. This single optimization took keyframe rendering from ~180ms to ~137ms, making 10 FPS feasible(-ish).
+
+### Frame Timings
+
+Real measurements on RP2040:
+
+- **Keyframes:** 135-140ms (copies all pixels)
+- **Delta frames:** 4-59ms (varies depending on size of delta)
+- **Target:** 100ms per frame (10 FPS)
+
+With 25% keyframe rate, we achieve ~9 FPS average with occasional stutters on keyframes. More loop unrolling would lead to exponential diminishing returns.
+
+Run it at 7fps if you don't like the stutters, I guess.
+
 ## Installation
 
 > [!NOTE]
 > USB UVC on the Pico does not work on Windows! This is an issue with the underlying library / how Windows deals with composite devices and is not something I am able to fix.
 
 (requires a Pico of course, or any [compatible circuitpython-enabled board](readme/compatible_boards.txt))
+
+Make sure file size of crushed_frames.bin is small enough to fit on your board. You might have to decrease FRAMES in `gen_compressed.py`
 
 - Install [Circuitpy firmware](https://circuitpython.org/board/raspberry_pi_pico2/)
 - Copy everything in `pd-src` into the CIRCUITPY drive.

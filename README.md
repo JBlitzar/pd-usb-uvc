@@ -1,12 +1,12 @@
 # pd-usb-uvc
 
+A full UVC webcam implementation running entirely on the Raspberry Pi Pico.
+
+This project turns a Pico (RP2040/RP2350) into a functioning USB webcam that plays a compressed 160x120 video at roughly 9–10 FPS. It uses a custom bitpacked/XOR-diff video format, a lightweight streaming decoder, and a highly optimized renderer that pushes CircuitPython to its limits. If you want to stream arbitrary video over USB from a microcontroller, this repo shows exactly how to make it work.
+
 https://github.com/user-attachments/assets/e737253a-b9ba-4cf4-a35d-660bea247a19
 
 <img src=readme/demo-linux.png style="width: 50%">
-
-Streams the _Bad Apple_ video to webcam stream using the pico at 160x120 resolution! First working standalone utilization of usb_video module published on [Github](https://github.com/search?q=%22import+usb_video%22+language%3APython+path%3A*.py+NOT+%22thonny%22&type=code) as far as I can tell
-
-_has been tested on RP2350 and Xiao RP2040!_
 
 ## Why This Exists
 
@@ -21,6 +21,8 @@ If you're trying to use `usb_video` in your own project, this codebase may be th
 
 A minimal working example can be found in [`uvc-tests-src/`](uvc-tests-src)
 
+Also, I thought it'd be fun.
+
 ## Technical details
 
 ### File format
@@ -29,7 +31,7 @@ The foremost constraints are those of storage space and compute power. I downsca
 
 The pico reads the file in a streaming manner so as to not hold all of it in memory. (Although I ended up getting OOM anyways: the solution was to occasionally close and reopen the file and then `.seek()` to the last location to pick back up where it left off)
 
-FrameBuffer expects pixel values to be in the "RGB 565 Swapped" pixel format. Who knows what that means? Luckily, pretty much universally black is all `0x0000`s and white is all `0xffff`s. At one point I tried to fill the screen with magenta and it turned out green so ¯\\\_(ツ)\_/¯ (Although maybe `ffplay` was just incorrectly interpreting it as YUYV? Honestly who knows atp).
+FrameBuffer expects pixel values to be in the "RGB 565 Swapped" pixel format. Who knows what that means? Luckily, pretty much universally black is all `0x0000`s and white is all `0xffff`s. At one point I tried to fill the screen with magenta and it turned out green so ¯\\\_(ツ)\_/¯ (I think I swapped it one too many times in the end. Working code that produces magenta is in `uvc-tests-src/`).
 
 See the code in action! Parsing and preparation is done in [gen_compressed.py](gen_compressed.py) while decoding and streaming is in [pd-src/code.py](pd-src/code.py)
 
@@ -77,6 +79,8 @@ Run it at 7fps if you don't like the stutters, I guess.
 
 ## Installation
 
+_has been tested on RP2350 and Xiao RP2040!_
+
 > [!NOTE]
 > USB UVC on the Pico does not work on Windows! This is an issue with the underlying library / how Windows deals with composite devices and is not something I am able to fix.
 
@@ -84,9 +88,11 @@ Run it at 7fps if you don't like the stutters, I guess.
 
 Make sure file size of crushed_frames.bin is small enough to fit on your board. You might have to decrease FRAMES in `gen_compressed.py`
 
-- Install [Circuitpy firmware](https://circuitpython.org/board/raspberry_pi_pico2/)
-- Copy everything in `pd-src` into the CIRCUITPY drive.
-- Physically re-plug in the Pico and check your video devices!
+1. Install CircuitPython for your board
+2. Copy pd-src/crushed_frames.bin to CIRCUITPY
+3. Copy pd-src/\* to CIRCUITPY
+4. Unplug/replug the board (important!)
+5. Check /dev/video\* or use ffplay
 
 ## Hacking
 

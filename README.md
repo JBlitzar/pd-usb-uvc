@@ -97,10 +97,14 @@ _has been tested on RP2350 and Xiao RP2040!_
 Make sure file size of crushed_frames.bin is small enough to fit on your board. You might have to decrease FRAMES in `gen_compressed.py`
 
 1. Install CircuitPython for your board
-2. Copy pd-src/crushed_frames.bin to CIRCUITPY
-3. Copy pd-src/\* to CIRCUITPY
-4. Unplug/replug the board (important!)
-5. Check /dev/video\* or use ffplay
+2. Double click `install.command` OR
+
+   a. Copy pd-src/crushed_frames.bin to CIRCUITPY
+
+   b. Copy pd-src/\* to CIRCUITPY
+
+3. Unplug/replug the board (important!)
+4. Check /dev/video\* or use ffplay
 
 ## Hacking
 

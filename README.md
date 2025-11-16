@@ -79,6 +79,12 @@ With 25% keyframe rate, we achieve ~9 FPS average with occasional stutters on ke
 
 Run it at 7fps if you don't like the stutters, I guess.
 
+## File size vs decoding speed tradeoff
+
+Using a keyframe threshold of 1200 pixels optimizes for file size (1200 \* 16=19200 :: 16:1 ratio of bits / pixel in bitpacked keyframes vs deltas). But if you have a 2000-pixel delta, then you're wasting cycles redrawing all 19,200 pixels to the buffer. Increasing this threshold to 3000 increases file size 25% but greatly reduces keyframe density, resulting in fewer laggy frames.
+
+<img src="perf-testing/hist.png" style="width: 50%">
+
 ## Installation
 
 _has been tested on RP2350 and Xiao RP2040!_

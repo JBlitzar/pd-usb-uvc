@@ -108,7 +108,7 @@ Make sure file size of crushed_frames.bin is small enough to fit on your board. 
 
 ## Hacking
 
-Swap out badapple.mp4 for a video file of your choosing, update `prepare.sh`, and run `prepare.sh` to use a different video
+Swap out badapple.mp4 for a video file of your choosing, update `prepare.sh`, and run `prepare.sh` to use a different video. Video compression is currently very optimized for bad apple (black and white, no dithering), so quality of results may vary. 
 
 ## Licensing
 

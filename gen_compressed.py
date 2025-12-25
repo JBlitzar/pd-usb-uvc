@@ -16,9 +16,9 @@ from tqdm import tqdm
 WIDTH = 160
 HEIGHT = 120
 FPS = 10
-FRAMES = 1000
+FRAMES = 2190
 
-KEYFRAME_THRESH = 3000  # 1200 for smallest size. Higher = faster processing but larger file. Set it as high as you have storage space for
+KEYFRAME_THRESH = 10_000  # 1200 for smallest size. Higher = faster processing but larger file. Set it as high as you have storage space for
 
 ORIG_FPS = 30
 frames_bin = []
